@@ -41,6 +41,51 @@ maxVol      = 110
 minVol      = 30
 timeIncVol  = 1
 
+#threshold for alarms
+highbs   = 180
+highurbs = 200
+highstbs = 30
+hightime = 90 #min
+lowbs    = 80
+lowurbs  = 50
+lowstbs  = 10 
+lowtime  = 10 #min
+
+# current BS state
+bsValue   = 0 # mg/dl
+bsTrend   = 0 # 1:horz 2:45up 3:90up 4:45down 5:90down
+bsDrop    = 0 # 0:noSpeed 1:oneArrow 2:twoArrow
+
+#aduio related stuff
+alarmHigh   = "/home/boo/wakeaboo/audio/"
+alarmHighUr = "/home/boo/wakeaboo/audio/"
+alarmLow    = "/home/boo/wakeaboo/audio/"
+alarmLowUr  = "/home/boo/wakeaboo/audio/"
+alarmNoData = "/home/boo/wakeaboo/audio/"
+alarmDrop   = "/home/boo/wakeaboo/audio/"
+alarmRaise  = "/home/boo/wakeaboo/audio/"
+
+songs    = os.listdir(musicDir)
+songsNum = len(songs)
+randSong = randint(1, songsNum)-1
+
+#button press sequence for shutting off alarm
+exitSequence    = 'sslssl'
+exitFlag        = 0
+snooze          = 0
+numLongPresses  = 0
+numShortPresses = 0
+buttSequence    = "" # empty sequence
+prevBttnState   = False
+
+# target buttons
+targetWack = 0
+targetLed  = 0
+
+
+#################################
+#             GPIO              #
+#################################
 #hardware pin number for button
 disableBt   =  5 #pin 29
 wackBt1     = 21 #pin 40
@@ -57,37 +102,6 @@ timer15     = 12 #pin 32
 timer90     = 13 #pin 33
 elWire      =  4 #pin  7
 
-#threshold for alarms
-highbs   = 180
-highurbs = 200
-highstbs = 30
-hightime = 90 #min
-lowbs    = 80
-lowurbs  = 50
-lowstbs  = 10 
-lowtime  = 10 #min
-
-#aduio related stuff
-alarmHigh   = "/home/boo/wakeaboo/audio/"
-alarmHighUr = "/home/boo/wakeaboo/audio/"
-alarmLow    = "/home/boo/wakeaboo/audio/"
-alarmLowUr  = "/home/boo/wakeaboo/audio/"
-alarmNoData = "/home/boo/wakeaboo/audio/"
-alarmDrop   = "/home/boo/wakeaboo/audio/"
-alarmRaise  = "/home/boo/wakeaboo/audio/"
-
-songs    = os.listdir(musicDir)
-songsNum = len(songs)
-randSong = randint(1, songsNum)-1
-
-#button press sequence for shutting off alarm
-exitSequence = 'sslssl'
-exitFlag      = 0
-snooze        = 0
-numLongPresses    = 0
-numShortPresses   = 0
-buttSequence      = "" # empty sequence
-prevBttnState = False
 
 
 
@@ -100,9 +114,9 @@ prevBttnState = False
 #################################
 
 # activates the GIPO on the Raspi as a pullup mode and defines its callback function
-# add rising edge detection on a channel
 GPIO.setmode(GPIO.BCM)
 
+# add rising edge detection on all buttons
 GPIO.setup(disableBt, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(wackBt1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(wackBt2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -112,6 +126,7 @@ GPIO.setup(wackBt5, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(timer15, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(timer90, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
+# set all leds as outputs
 GPIO.setup(wackLed1, GPIO.OUT)
 GPIO.setup(wackLed2, GPIO.OUT)
 GPIO.setup(wackLed3, GPIO.OUT)
@@ -189,11 +204,29 @@ def decrease_volume():
 
 
 #################################
-#       VOLUME CONTROLS         #
+#          INTERRUPTS           #
 #################################
 
-GPIO.add_event_detect(butt, GPIO.BOTH, callback=butt_callback, bouncetime=100)
+GPIO.add_event_detect(disableBt, GPIO.BOTH, callback=disableBt_callback, bouncetime=100)
 
+GPIO.add_event_detect(wackBt1, GPIO.BOTH, callback=wackBt1_callback, bouncetime=100)
+GPIO.add_event_detect(wackBt2, GPIO.BOTH, callback=wackBt2_callback, bouncetime=100)
+GPIO.add_event_detect(wackBt3, GPIO.BOTH, callback=wackBt3_callback, bouncetime=100)
+GPIO.add_event_detect(wackBt4, GPIO.BOTH, callback=wackBt4_callback, bouncetime=100)
+GPIO.add_event_detect(wackBt5, GPIO.BOTH, callback=wackBt5_callback, bouncetime=100)
+
+GPIO.add_event_detect(timer15, GPIO.BOTH, callback=butt_callback, bouncetime=100)
+GPIO.add_event_detect(timer90, GPIO.BOTH, callback=butt_callback, bouncetime=100)
+
+
+GPIO.setup(disableBt, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(wackBt1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(wackBt2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(wackBt3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(wackBt4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(wackBt5, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(timer15, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(timer90, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 
 

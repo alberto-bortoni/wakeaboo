@@ -14,16 +14,18 @@ import RPi.GPIO as GPIO
 from random import *
 from datetime import datetime
 from datetime import timedelta
+import re
+
 
 # first disable the shutdown routine and spotify
 subprocess.call(["/etc/init.d/listen-for-shutdown.sh", "stop"])
 #TODO -- disable spotify
-
+# enable print
+enablePrint = True
 
 #################################
 #          VARIABLES            #
 #################################
-
 
 # enable/disable functionality
 startTime       = time.time() #TODO -- what is this, use for first junk data
@@ -48,12 +50,13 @@ lowtime  = 10 #min
 
 # current BS state
 rawImport = None # from nighscout
-bsTime    = time.time()
+bsTime    = datetime.now()
 bsValue   = 0  # mg/dl
 bsTrend   = 0  # 1:90up 2:45up 3:flat 4:45down 5:90down
 bsDrop    = 0  # 0:noSpeed 1:oneArrow 2:twoArrow
 bsData    = False # 0:noData  1:data
 noDataTh  = 10 # no data treshold in min
+timeStr   = None
 
 # alarm variables
 termLongTime  = 600 #10 min to auto ack 
@@ -78,7 +81,6 @@ songs    = os.listdir(musicDir)
 songsNum = len(songs)
 randSong = randint(1, songsNum)-1
 
-
 # target buttons and state
 targetWack  = 0
 targetLed   = 0
@@ -89,6 +91,11 @@ wrongWack   = False
 timerSet     = False
 timerSetTime = 0
 
+#loop services in seconds
+bsServiceLoop    = 30
+lastBsLoop       = datetime.now()
+alarmTriggerFlag = False
+alarmPrimedFlag  = False
 
 #################################
 #             GPIO              #
@@ -150,7 +157,6 @@ GPIO.setup(roomLed, GPIO.OUT)
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
 
 
-
 #################################
 #         BUTTON PRESS          #
 #################################
@@ -206,7 +212,7 @@ def wack_callback(wackBt):
   GPIO.output(targetLed, GPIO.HIGH)
  #-----------------------------------------------#
 
-# called when any wack button is pressed
+# called when any timer button is pressed
 def timer_callback(timerBt):
   global targetWack targetLed pressedWack wrongWack
 
@@ -233,6 +239,8 @@ def increase_volume():
     print "Increasing volume to {}".format(volume)
     player.stdin.write('0')
     player.stdin.flush()
+ #-----------------------------------------------#
+
 
 # decreases volume by sending a character command to mplayer
 # 9 is mplayer's command to decrease
@@ -243,7 +251,7 @@ def decrease_volume():
     print "Decreasing volume to {}".format(volume)
     player.stdin.write('9')
     player.stdin.flush()
-
+ #-----------------------------------------------#
 
 #################################
 #         GET BS DATA           #
@@ -252,54 +260,63 @@ def decrease_volume():
 def getbsdata():
   global rawImport, bsValue, bsTrend, bsDrop, bsData, bsTime
 
-  rawImport = subprocess.call(["wget", "-O", "log", " https://wakeaboo.herokuapp.com/api/v1/entries/?token=raspi-97846cb04ad59b51"])
-  
   #cast date and correct for timezone bug
-  #TODO -- test separatelly
-  timeStr = rawImport[12:20]
+  rawImport  =  subprocess.check_output(["wget","-q","-O","-","https://wakeaboo.herokuapp.com/api/v1/entries/current/?token=raspi-97846cb04ad59b51"])
+  castTab    = re.compile("[^\t]+")
+  rawParts   = castTab.findall(rawImport)
 
   #TODO -- if cant parse, access tthen no data
-  if bsData
-    bsTime  = datetime.strptime(timeStr, '%Y-%m-%dT%H:%M:%S')
-    bsTime  = bsTime - timedelta(hours=5) 
+  #if bsData
+  timeStr = rawParts[0][1:20]
+  bsTime  = datetime.strptime(timeStr, '%Y-%m-%dT%H:%M:%S')
+  #TODO -- fix with timezone, otherwise issues with DTS
+  bsTime  = bsTime - timedelta(hours=5) 
 
-    # if data is older than X min, no data
-    if time.time()-timedelta(minutes=noDataTh) > bsTime:
-      bsData = False
-    else:
-      bsData = True
-    
-    #cast bs
-    #TODO -- this does not work, need to find tabs
-    val = rawImport
-    bsValue = int(val,base=10)
-    
-    #cast trend and drop
-    trend = rawImport
+  # if data is older than X min, no data
+  if datetime.now()-timedelta(minutes=noDataTh) > bsTime:
+    bsData = False
+  else:
+    bsData = True
 
-    if trend == "DoubleUp":
-      bsTrend = 1
-      bsDrop  = 2
-    elif trend == "SingleUp":
-      bsTrend = 1
-      bsDrop  = 1
-    elif trend == "FortyFiveUp":
-      bsTrend = 2
-      bsDrop  = 0
-    elif trend == "Flat":
-      bsTrend = 3
-      bsDrop  = 0
-    elif trend == "FortyFiveDown":
-      bsTrend = 4
-      bsDrop  = 0
-    elif trend == "SingleDown":
-      bsTrend = 5
-      bsDrop  = 1
-    else trend == "DoubleDown":
-      bsTrend = 5
-      bsDrop  = 2
-    
-    rawImport = None
+  #cast bs
+  tval    = rawParts[2]
+  bsValue = int(tval,base=10)
+
+  #cast trend and drop
+  trend = rawParts[3][1:-1]
+
+  if trend == "DoubleUp":
+    bsTrend = 1
+    bsDrop  = 2
+  elif trend == "SingleUp":
+    bsTrend = 1
+    bsDrop  = 1
+  elif trend == "FortyFiveUp":
+    bsTrend = 2
+    bsDrop  = 0
+  elif trend == "Flat":
+    bsTrend = 3
+    bsDrop  = 0
+  elif trend == "FortyFiveDown":
+    bsTrend = 4
+    bsDrop  = 0
+  elif trend == "SingleDown":
+    bsTrend = 5
+    bsDrop  = 1
+  elif trend == "DoubleDown":
+    bsTrend = 5
+    bsDrop  = 2
+
+  rawImport = None
+
+  print "time {}".format(bsTime)
+  print "data {}".format(bsData)
+  print "value {}".format(bsValue)
+  print "trendT {}".format(trend)
+  print "trend {}".format(bsTrend)
+  print "drop {}".format(bsDrop)
+ #-----------------------------------------------#
+
 
 #################################
 #          INTERRUPTS           #
@@ -324,13 +341,20 @@ GPIO.add_event_detect(timer90, GPIO.RISING, callback=timer_callback, bouncetime=
 # initialize mplayer with prefered condigurations and introduce a delay to allow it to boot correctly
 # kill the subprocess after. This is a workaround to allow mplayer to actually start volume at the command sent
 # otherwise it actually does not.
-alarm = subprocess.Popen(["mplayer", "-volume", str(volume), "-really-quiet", "/home/eleven/Alarms/Alarm03.wav"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+alarm = subprocess.Popen(["mplayer", "-volume", str(volume), "-really-quiet",
+                         "/home/eleven/Alarms/Alarm03.wav"], stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         universal_newlines=True)
 time.sleep(5)
 alarm.terminate()
 
 # boot player once again with the prefered commands, and random song, and now it will init as indicated
 # delay to allow player to finalize initialization
-player = subprocess.Popen(["mplayer", "-volume", "-1", "-volstep", str(volumeStep), "-loop", "0", "-really-quiet", musicDir+songs[randSong]], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+player = subprocess.Popen(["mplayer", "-volume", "-1", "-volstep",
+                          str(volumeStep), "-loop", "0", "-really-quiet",
+                          musicDir+songs[randSong]], stdin=subprocess.PIPE,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          universal_newlines=True)
 time.sleep(10)
 
 
@@ -352,7 +376,10 @@ while exitFlag==0:
       print "Exit Sequence Activated"
       player.terminate()
       exitFlag = 1
-      alarm = subprocess.Popen(["mplayer", "-volume", "75", "-really-quiet", "/home/eleven/Alarms/Alarm03.wav"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+      alarm = subprocess.Popen(["mplayer", "-volume", "75", "-really-quiet",
+                               "/home/eleven/Alarms/Alarm03.wav"], 
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
+                               stderr=subprocess.PIPE, universal_newlines=True)
       time.sleep(6)
       alarm.terminate()
 

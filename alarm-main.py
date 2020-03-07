@@ -12,34 +12,29 @@ import shlex
 from time import sleep
 import RPi.GPIO as GPIO
 from random import *
+from datetime import datetime
+from datetime import timedelta
 
-# first disable the shutdown routine
+# first disable the shutdown routine and spotify
 subprocess.call(["/etc/init.d/listen-for-shutdown.sh", "stop"])
+#TODO -- disable spotify
+
 
 #################################
 #          VARIABLES            #
 #################################
 
-subprocess.call(["wget", "-O", "log", " https://wakeaboo.herokuapp.com/api/v1/entries/?token=raspi-97846cb04ad59b51"])
 
-#times in seconds
-longPressTime     = 3
-termLongTime      = 600
-startTime         = time.time()
-lastTime          = time.time()
-buttRisingTime    = None
-buttFallingTime   = None
-buttDuration      = None
-longPressWaiting  = False
-shortPressWaiting = False
-disableTime       = 3
-
-#player volume
-volume      = 10
-volumeStep  = 2
-maxVol      = 110
-minVol      = 30
-timeIncVol  = 1
+# enable/disable functionality
+startTime       = time.time() #TODO -- what is this, use for first junk data
+lastTime        = time.time() #TODO -- what is this
+buttRisingTime  = None
+buttFallingTime = None
+buttDuration    = None
+disableTime     = 5 # press for in seconds
+exitFlag        = False
+prevBttnState   = False # to count time
+disableBtLatch  = False # cant diactivate if alarm is on
 
 #threshold for alarms
 highbs   = 180
@@ -52,35 +47,47 @@ lowstbs  = 10
 lowtime  = 10 #min
 
 # current BS state
-bsValue   = 0 # mg/dl
-bsTrend   = 0 # 1:horz 2:45up 3:90up 4:45down 5:90down
-bsDrop    = 0 # 0:noSpeed 1:oneArrow 2:twoArrow
+rawImport = None # from nighscout
+bsTime    = time.time()
+bsValue   = 0  # mg/dl
+bsTrend   = 0  # 1:90up 2:45up 3:flat 4:45down 5:90down
+bsDrop    = 0  # 0:noSpeed 1:oneArrow 2:twoArrow
+bsData    = False # 0:noData  1:data
+noDataTh  = 10 # no data treshold in min
+
+# alarm variables
+termLongTime  = 600 #10 min to auto ack 
+
+#player volume
+volume      = 10
+volumeStep  = 2
+maxVol      = 110
+minVol      = 30
+timeIncVol  = 1
 
 #aduio related stuff
-alarmHigh   = "/home/boo/wakeaboo/audio/"
-alarmHighUr = "/home/boo/wakeaboo/audio/"
-alarmLow    = "/home/boo/wakeaboo/audio/"
-alarmLowUr  = "/home/boo/wakeaboo/audio/"
-alarmNoData = "/home/boo/wakeaboo/audio/"
-alarmDrop   = "/home/boo/wakeaboo/audio/"
-alarmRaise  = "/home/boo/wakeaboo/audio/"
+alarmHigh   = "/home/boo/glucalarm/audio/"
+alarmHighUr = "/home/boo/glucalarm/audio/"
+alarmLow    = "/home/boo/glucalarm/audio/"
+alarmLowUr  = "/home/boo/glucalarm/audio/"
+alarmNoData = "/home/boo/glucalarm/audio/"
+alarmDrop   = "/home/boo/glucalarm/audio/"
+alarmRaise  = "/home/boo/glucalarm/audio/"
 
 songs    = os.listdir(musicDir)
 songsNum = len(songs)
 randSong = randint(1, songsNum)-1
 
-#button press sequence for shutting off alarm
-exitSequence    = 'sslssl'
-exitFlag        = 0
-snooze          = 0
-numLongPresses  = 0
-numShortPresses = 0
-buttSequence    = "" # empty sequence
-prevBttnState   = False
 
-# target buttons
-targetWack = 0
-targetLed  = 0
+# target buttons and state
+targetWack  = 0
+targetLed   = 0
+pressedWack = False
+wrongWack   = False
+
+# timer variables
+timerSet     = False
+timerSetTime = 0
 
 
 #################################
@@ -100,7 +107,8 @@ wackLed4    = 23 #pin 16
 wackLed5    = 24 #pin 18
 timer15     = 12 #pin 32
 timer90     = 13 #pin 33
-elWire      =  4 #pin  7
+elWire      =  9 #pin 21
+roomLed     = 11 #pin 23
 
 
 
@@ -133,6 +141,7 @@ GPIO.setup(wackLed3, GPIO.OUT)
 GPIO.setup(wackLed4, GPIO.OUT)
 GPIO.setup(wackLed5, GPIO.OUT)
 GPIO.setup(elWire, GPIO.OUT)
+GPIO.setup(roomLed, GPIO.OUT)
 
 
 
@@ -140,43 +149,76 @@ GPIO.setup(elWire, GPIO.OUT)
 #                           FUNCTIONS                                   #
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
 
-# gets called whenever there is a change in the button input
+
+
+#################################
+#         BUTTON PRESS          #
+#################################
+# gets called whenever there is a change in the disable/enable button
 # detects rising or falling edge and records the duration of the press
-# categorizes it as a short or long press according to pre determiend values above
-def butt_callback(channel):
-  global buttSequence, buttRisingTime, buttFallingTime, buttDuration, longPressTime, longPressWaiting, shortPressWaiting, numLongPresses, numShortPresses, prevBttnState
+# if it is greater than the disable duration, then exit flag is up and routine ends
+# this is ignored if the alarm is latched because an alarm is ongoing
+def disableBt_callback(channel):
+  global buttRisingTime, buttFallingTime, buttDuration, disableTimme, prevBttnState
   buttValue = GPIO.input(channel)
+  
+  #if an alarm is ongoing then block
+  if disableBtLatch:
+    # after button is depressed count time
+    if buttValue and prevBttnState:
+      prevBttnState   = False
+      buttFallingTime = time.time()
+      buttDuration    = (buttFallingTime - buttRisingTime) if buttRisingTime is not None else None
 
-  if buttValue and prevBttnState:
-    prevBttnState   = False
-    buttFallingTime = time.time()
-    buttDuration    = (buttFallingTime - buttRisingTime) if buttRisingTime is not None else None
+      print "Detected edge {} duration {}".format(buttValue, buttDuration)
 
-    print "Detected edge {} on channel {} at {} duration {}".format(buttValue, channel, buttRisingTime, buttDuration)
+      if buttDuration > disableTime:
+        exitFlag      = True
+        print "Disableing process"
+      else:
+        print "press too short"
+      
+      #reset durations
+      buttFallingTime = None
+      buttDuration    = None
+      buttRisingTime  = None
+    
+    # button is first pressed
+    else:
+      prevBttnState   = True
+      buttFallingTime = None
+      buttDuration    = None
+      buttRisingTime  = time.time()
 
-    if buttDuration > longPressTime:
-      longPressWaiting   = True
-      numLongPresses    += 1
-      buttSequence      += 'l'
-      print "LONG PRESS {}".format(numLongPresses)
+ #-----------------------------------------------#
 
-    elif buttDuration is not None:
-      shortPressWaiting  = True
-      numShortPresses   += 1
-      buttSequence      += 's'
-      print "SHORT PRESS {}".format(numShortPresses)
+# called when any wack button is pressed
+def wack_callback(wackBt):
+  global targetWack targetLed pressedWack wrongWack
 
+  pressedWack = True
 
-    buttFallingTime = None
-    buttDuration    = None
-    buttRisingTime  = None
-    print 'Sequence: {}'.format(buttSequence)
-
+  if wackBt == targetWack:
+    wrongWack = False
   else:
-    prevBttnState   = True
-    buttFallingTime = None
-    buttDuration    = None
-    buttRisingTime  = time.time()
+    wrongWack = True
+
+  GPIO.output(targetLed, GPIO.HIGH)
+ #-----------------------------------------------#
+
+# called when any wack button is pressed
+def timer_callback(timerBt):
+  global targetWack targetLed pressedWack wrongWack
+
+  pressedWack = True
+
+  if wackBt == targetWack:
+    wrongWack = False
+  else:
+    wrongWack = True
+
+  GPIO.output(targetLed, GPIO.HIGH)
+ #-----------------------------------------------#
 
 #################################
 #       VOLUME CONTROLS         #
@@ -204,30 +246,75 @@ def decrease_volume():
 
 
 #################################
+#         GET BS DATA           #
+#################################
+
+def getbsdata():
+  global rawImport, bsValue, bsTrend, bsDrop, bsData, bsTime
+
+  rawImport = subprocess.call(["wget", "-O", "log", " https://wakeaboo.herokuapp.com/api/v1/entries/?token=raspi-97846cb04ad59b51"])
+  
+  #cast date and correct for timezone bug
+  #TODO -- test separatelly
+  timeStr = rawImport[12:20]
+
+  #TODO -- if cant parse, access tthen no data
+  if bsData
+    bsTime  = datetime.strptime(timeStr, '%Y-%m-%dT%H:%M:%S')
+    bsTime  = bsTime - timedelta(hours=5) 
+
+    # if data is older than X min, no data
+    if time.time()-timedelta(minutes=noDataTh) > bsTime:
+      bsData = False
+    else:
+      bsData = True
+    
+    #cast bs
+    #TODO -- this does not work, need to find tabs
+    val = rawImport
+    bsValue = int(val,base=10)
+    
+    #cast trend and drop
+    trend = rawImport
+
+    if trend == "DoubleUp":
+      bsTrend = 1
+      bsDrop  = 2
+    elif trend == "SingleUp":
+      bsTrend = 1
+      bsDrop  = 1
+    elif trend == "FortyFiveUp":
+      bsTrend = 2
+      bsDrop  = 0
+    elif trend == "Flat":
+      bsTrend = 3
+      bsDrop  = 0
+    elif trend == "FortyFiveDown":
+      bsTrend = 4
+      bsDrop  = 0
+    elif trend == "SingleDown":
+      bsTrend = 5
+      bsDrop  = 1
+    else trend == "DoubleDown":
+      bsTrend = 5
+      bsDrop  = 2
+    
+    rawImport = None
+
+#################################
 #          INTERRUPTS           #
 #################################
 
 GPIO.add_event_detect(disableBt, GPIO.BOTH, callback=disableBt_callback, bouncetime=100)
 
-GPIO.add_event_detect(wackBt1, GPIO.BOTH, callback=wackBt1_callback, bouncetime=100)
-GPIO.add_event_detect(wackBt2, GPIO.BOTH, callback=wackBt2_callback, bouncetime=100)
-GPIO.add_event_detect(wackBt3, GPIO.BOTH, callback=wackBt3_callback, bouncetime=100)
-GPIO.add_event_detect(wackBt4, GPIO.BOTH, callback=wackBt4_callback, bouncetime=100)
-GPIO.add_event_detect(wackBt5, GPIO.BOTH, callback=wackBt5_callback, bouncetime=100)
+GPIO.add_event_detect(wackBt1, GPIO.RISING, callback=wack_callback, bouncetime=100)
+GPIO.add_event_detect(wackBt2, GPIO.RISING, callback=wack_callback, bouncetime=100)
+GPIO.add_event_detect(wackBt3, GPIO.RISING, callback=wack_callback, bouncetime=100)
+GPIO.add_event_detect(wackBt4, GPIO.RISING, callback=wack_callback, bouncetime=100)
+GPIO.add_event_detect(wackBt5, GPIO.RISING, callback=wack_callback, bouncetime=100)
 
-GPIO.add_event_detect(timer15, GPIO.BOTH, callback=butt_callback, bouncetime=100)
-GPIO.add_event_detect(timer90, GPIO.BOTH, callback=butt_callback, bouncetime=100)
-
-
-GPIO.setup(disableBt, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(wackBt1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(wackBt2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(wackBt3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(wackBt4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(wackBt5, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(timer15, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(timer90, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-
+GPIO.add_event_detect(timer15, GPIO.RISING, callback=timer_callback, bouncetime=100)
+GPIO.add_event_detect(timer90, GPIO.RISING, callback=timer_callback, bouncetime=100)
 
 
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
@@ -275,7 +362,12 @@ while exitFlag==0:
     exitFlag = 1
 
 
-# first disable the shutdown routine
+
+#|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
+#                              EXIT                                     #
+#|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
+# first disable the shutdown routine and spotify
 subprocess.call(["/etc/init.d/listen-for-shutdown.sh", "start"])
+#TODO -- disable spotify
 
 #EOF#

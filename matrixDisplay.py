@@ -32,37 +32,41 @@ disp8.brightness = 0.1
 #################################
 
 #this only prints on the character area 16x7
-def print16Mat(arr):
+def print16Mat():
   for r in range(0,7):
     for c in range (0,16):
-      disp16[c,r] = np.matrix(arr)[r,c]
+      disp16[c,r] = np.matrix(st.ledmat)[r,c]
 #-----------------------------------------------#
 
-def fill16Mat(arr, fill):
+def fill16Mat(fill):
   for r in range(0,7):
     for c in range (0,16):
-      disp16[c,r] = 0
+      disp16[c,r]    = 0
+      st.ledmat[r,c] = 0
 #-----------------------------------------------#
 
 def clear16Mat():
   disp16.fill(0)
+  st.ledmat = np.zeros((8,16))
 #-----------------------------------------------#
 
 #this only fills/emties the timer area 16x1
-def fill16Bar(arr, fill):
+def fill16Bar(fill):
   r = 7
   for c in range (0,16):
-    disp16[c,r] = fill
+    disp16[c,r]    = fill
+    st.ledmat[r,c] = fill
 #-----------------------------------------------#
 
-def print8Mat(arr):
+def print8Mat():
   for r in range(0,8):
     for c in range (0,8):
-      disp8[c,r] = np.matrix(arr)[r,c]
+      disp8[c,r] = np.matrix(st.arrmat)[r,c]
 #-----------------------------------------------#
 
 def clear8Mat():
   disp8.fill(0)
+  st.arrmat = np.zeros((8,8))
 #-----------------------------------------------#
 
 
@@ -77,7 +81,7 @@ def mkEmptyArr(size):
     return np.zeros((8,8))
 #-----------------------------------------------#
 
-def catTimeArr(arr):
+def catTimeArr():
   colon   = [[0,0],[0,0],[1,0],[0,0],[1,0],[0,0],[0,0]]
   timenow = datetime.now()
   hr1 = timenow.hour//10
@@ -86,43 +90,39 @@ def catTimeArr(arr):
   mi2 = timenow.minute%10
   
   if hr1 == 0:
-    arr[0:7, 0: 3] = numSmall(10)
+    st.ledmat[0:7, 0: 3] = numSmall(10)
   else:
-    arr[0:7, 0: 3] = numSmall(hr1)
+    st.ledmat[0:7, 0: 3] = numSmall(hr1)
   
-  arr[0:7, 4: 7]   = numSmall(hr2)
-  arr[0:7, 7: 9]   = colon
+  st.ledmat[0:7, 4: 7]   = numSmall(hr2)
+  st.ledmat[0:7, 7: 9]   = colon
   
   if mi1 == 0:
-    arr[0:7, 9:12] = numSmall(10) 
+    st.ledmat[0:7, 9:12] = numSmall(10) 
   else:
-    arr[0:7, 9:12] = numSmall(mi1) 
+    st.ledmat[0:7, 9:12] = numSmall(mi1) 
   
-  arr[0:7,13:16]   = numSmall(mi2)
-
-  return arr
+  st.ledmat[0:7,13:16]   = numSmall(mi2)
 #-----------------------------------------------#
 
-def catBsArr(arr, bs):
+def catBsArr(bs):
   hun = bs//100
   ten = (bs%100)//10
   uni = bs%10
 
   if hun == 0:
-    arr[0:7, 1: 5] = numBig(10)
+    st.ledmat[0:7, 1: 5] = numBig(10)
   else:
-    arr[0:7, 1: 5] = numBig(hun)
+    st.ledmat[0:7, 1: 5] = numBig(hun)
 
-  arr[0:7, 6:10]   = numBig(ten)
-  arr[0:7,11:15]   = numBig(uni)
-
-  return arr
+  st.ledmat[0:7, 6:10]   = numBig(ten)
+  st.ledmat[0:7,11:15]   = numBig(uni)
 #-----------------------------------------------#
 
 #this only prints on the timer area 16x1
 #it will print a prop ammout of dots given the
 #size of total and lapsed
-def print16Bar(arr, tot, lap):
+def print16Bar(tot, lap):
   if tot == lap:
     tmp = 16
   else:
@@ -131,13 +131,37 @@ def print16Bar(arr, tot, lap):
   r = 7
   print(tmp)
   if tmp == 0:
-    fill16Bar(arr,1)
+    fill16Bar(1)
   else:
-    for c in range (0,tmp):
-      disp16[c,r] = 0
+    for c in range(0,tmp):
+      disp16[c,r]    = 0
+      st.ledmat[r,c] = 0
 #-----------------------------------------------#
 
-
+def printArr()
+  if st.bsTrend == "DoubleUp":
+    arrows()
+    bsTrend = 1
+    bsDrop  = 2
+  elif st.bsTrend == "SingleUp":
+    bsTrend = 1
+    bsDrop  = 1
+  elif st.bsTrend == "FortyFiveUp":
+    bsTrend = 2
+    bsDrop  = 0
+  elif st.bsTrend == "Flat":
+    bsTrend = 3
+    bsDrop  = 0
+  elif st.bsTrend == "FortyFiveDown":
+    bsTrend = 4
+    bsDrop  = 0
+  elif st.bsTrend == "SingleDown":
+    bsTrend = 5
+    bsDrop  = 1
+  elif st.bsTrend == "DoubleDown":
+    bsTrend = 5
+    bsDrop  = 2
+  else:
 
 #################################
 #            ARRAYS             #
@@ -198,6 +222,24 @@ def arrows(direc):
                      [0,1,0,1,0,1,0,0],
                      [0,0,1,1,1,0,0,0],
                      [0,0,0,1,0,0,0,0]])
+  elif direc == 7:
+    return np.array([[0,0,1,0,0,1,0,0],
+                     [0,0,1,0,0,1,0,0],
+                     [0,0,1,0,0,1,0,0],
+                     [0,0,1,0,0,1,0,0],
+                     [0,0,1,0,0,1,0,0],
+                     [1,0,1,0,0,1,0,1],
+                     [0,1,1,1,1,1,1,0],
+                     [0,0,1,0,0,1,0,0]])
+  elif direc == 7:
+    return np.array([[0,0,1,0,0,1,0,0],
+                     [0,0,1,0,0,1,0,0],
+                     [0,0,1,0,0,1,0,0],
+                     [0,0,1,0,0,1,0,0],
+                     [0,0,1,0,0,1,0,0],
+                     [1,0,1,0,0,1,0,1],
+                     [0,1,1,1,1,1,1,0],
+                     [0,0,1,0,0,1,0,0]])
   elif direc == 7:
     return np.array([[0,0,1,0,0,1,0,0],
                      [0,0,1,0,0,1,0,0],

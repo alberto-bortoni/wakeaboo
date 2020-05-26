@@ -1,0 +1,8 @@
+[Desktop Entry]
+
+Type=Application
+Version=1.0
+Name=Glucalarm
+Path=/home/boo/glucalarm
+Exec=/usr/bin/lxterminal -e /home/boo/glucalarm/initGlucalarm.sh start
+Terminal=false

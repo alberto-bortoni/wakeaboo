@@ -1,6 +1,0 @@
-copy the files from this dir into:
-/etc/init.d/listen-for-enable.sh
-/etc/init.d/listen-for-shutdown.sh
-/usr/local/bin/listen-for-shutdown.py
-
-

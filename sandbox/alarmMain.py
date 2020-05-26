@@ -20,9 +20,8 @@ from random import random
 
 # first disable the shutdown routine and spotify
 subprocess.call(["/etc/init.d/listen-for-shutdown.sh", "stop"])
-#TODO -- disable spotify
 # enable print
-enablePrint = True #TODO -- make my print method
+enablePrint = True
 
 #################################
 #          VARIABLES            #
@@ -53,9 +52,10 @@ lowTime  = 10 #min
 # current BS state
 rawImport = None # from nighscout
 bsTime    = datetime.now()
-bsValue   = 0  # mg/dl
-bsTrend   = 0  # 1:90up 2:45up 3:flat 4:45down 5:90down
+bsVal     = 0  # mg/dl
+bsTrend   = "nan"  # 1:90up 2:45up 3:flat 4:45down 5:90down
 bsDrop    = 0  # 0:noSpeed 1:oneArrow 2:twoArrow
+cmgErr    = 0
 bsDataAv  = False # 1:noData  1:data
 noDataTh  = 10 # no data treshold in min
 bsDataErr = 0  # 0:noerr, 1:wgeterr
@@ -260,63 +260,6 @@ def timer_callback(timerBt):
 
 
 
-#################################
-#           ALARM              #
-#################################
-
-# increases volume by sending a character command to mplayer
-# 0 is mplayer's command to increase
-def increase_volume():
-  global volume, player, maxVol
-  if (volume < maxVol):
-    volume = volume + volumeStep
-    print "Increasing volume to {}".format(volume)
-    player.stdin.write('0')
-    player.stdin.flush()
- #-----------------------------------------------#
-
-# decreases volume by sending a character command to mplayer
-# 9 is mplayer's command to decrease
-def decrease_volume():
-  global volume, player, minVol
-  if (volume > minVol):
-    volume = volume - volumeStep
-    print "Decreasing volume to {}".format(volume)
-    player.stdin.write('9')
-    player.stdin.flush()
- #-----------------------------------------------#
- 
-#alarm trigger
-#type: 1urHigh 2high 3low 4urLow 5noData 6drop 7rise
-def tirggerAlarm(alarmType)
-  if alarmTriggerFlag:
-    alarmTriggerFlag = False
-    
-    # boot player w prefered cmd
-    if alarmType == 1:
-      alarmSound = alarmHigh
-    elif alarmType == 2:
-      alarmSound = alarmHighUr
-    elif alarmType == 3:
-      alarmSound = alarmLow
-    elif alarmType == 4:
-      alarmSound = alarmLowUr
-    elif alarmType == 5:
-      alarmSound = alarmNoData
-    elif alarmType == 6:
-      alarmSound = alarmDrop
-    elif alarmType == 7:
-      alarmSound = alarmRaise
-
-    player = subprocess.Popen(["mplayer", "-volume", "-1", "-volstep",
-                          str(volumeStep), "-loop", "0", "-really-quiet",
-                          alarmSound, stdin=subprocess.PIPE,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          universal_newlines=True)
-
-    # delay to allow player to finalize initialization
-    time.sleep(10)
- #-----------------------------------------------#
 
 
 

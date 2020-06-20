@@ -172,9 +172,9 @@ def dispNumber(numb):
 
 
 def dispBsArr():
-  hun = cfg.bsVal//100
-  ten = (cfg.bsVal%100)//10
-  uni = cfg.bsVal%10
+  hun = cfg.bsValue//100
+  ten = (cfg.bsValue%100)//10
+  uni = cfg.bsValue%10
 
   if hun == 0:
     cfg.ledmat[0:7, 1: 5] = numBig(10)
@@ -190,43 +190,28 @@ def dispBsArr():
 def printArrow():
   if cfg.bsTrend == "DoubleUp":
     cfg.arrmat = arrows(1)
-    cfg.bsTrend = "up"
-    cfg.bsDrop  = 2
   elif cfg.bsTrend == "SingleUp":
     cfg.arrmat = arrows(2)
-    cfg.bsTrend = "up"
-    cfg.bsDrop  = 1
   elif cfg.bsTrend == "FortyFiveUp":
     cfg.arrmat = arrows(3)
-    cfg.bsTrend = "+45"
-    cfg.bsDrop  = 0
   elif cfg.bsTrend == "Flat":
     cfg.arrmat = arrows(4)
-    cfg.bsTrend = "hor"
-    cfg.bsDrop  = 0
   elif cfg.bsTrend == "FortyFiveDown":
     cfg.arrmat = arrows(5)
-    cfg.bsTrend = "-45"
-    cfg.bsDrop  = 0
   elif cfg.bsTrend == "SingleDown":
     cfg.arrmat = arrows(6)
-    cfg.bsTrend = "dwn"
-    cfg.bsDrop  = 1
   elif cfg.bsTrend == "DoubleDown":
     cfg.arrmat = arrows(7)
-    cfg.bsTrend = "dwn"
-    cfg.bsDrop  = 2
   elif cfg.bsTrend == "nan":
-  #  cfg.arrmat = arrows(8)
-    cfg.bsTrend = "nan"
-    cfg.bsDrop  = 0
+    cfg.arrmat = arrows(8)
   else:
     cfg.arrmat = arrows(0)
-    cfg.bsTrend = "nan"
-    cfg.bsDrop  = 0
-  cfg.arrmat = arrows(1)
+  #installed flipped to what originally thought
+  cfg.arrmat = np.rot90(cfg.arrmat,2)
   print8Mat()
-  #print("here{}".format(cfg.bsTrend))
+#-----------------------------------------------#
+
+
 #################################
 #            ARRAYS             #
 #################################

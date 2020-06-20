@@ -13,14 +13,21 @@ import numpy as np
 import RPi.GPIO as GPIO
 import matrixDisplay as mat
 
+
 #--------------------------#
 #       define gpio        #
 #**************************#
+#process variables
+printDebug = False
 
+
+#--------------------------#
+#       define gpio        #
+#**************************#
 #wack buttons (R->L)
-pinWackBt1 = 26
-pinWackBt2 = 13
-pinWackBt3 = 19
+pinWackBt1  = 26
+pinWackBt2  = 13
+pinWackBt3  = 19
 pinWackLed1 = 20
 pinWackLed2 = 21
 pinWackLed3 = 16
@@ -39,6 +46,7 @@ pinHighPowerLed = 18
 #matrices
 disp16Add = 0x71
 disp8Add  = 0x70
+
 
 #--------------------------#
 #       runtime vars       #
@@ -92,25 +100,24 @@ wack1Flag = False
 wack2Flag = False
 wack3Flag = False
 
+
 #--------------------------#
 #         cgm vars         #
 #**************************#
 #bs variables
-bsVal   = 0
-bsTrend = None
-bsDrop  = None
-cgmErr  = None
 
 # current BS state
 rawImport = None # from nighscout
 bsTime    = datetime.now()
 bsValue   = 0     # mg/dl
 bsTrend   = "nan" # text form
-bsDirec   = 0     # 1:90up 2:45up 3:flat 4:45down 5:90down
+bsDirec   = "nan" # up; +45; hor; -45; dwn
 bsDrop    = 0     # 0:noSpeed 1:oneArrow 2:twoArrow
 bsData    = False # 0:noData  1:data
 noDataTh  = 10    # no data treshold in min
 timeStr   = None
+cgmErr    = None  #TODO -- enum error
+#TODO -- matrix display error to enum map
 
 
 #--------------------------#

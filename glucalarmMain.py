@@ -14,6 +14,7 @@ import config as cfg
 #import initPiState
 import matrixDisplay as mat
 import sys
+import queryCgm as cgm
 
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
 #                             STARTUP STUFF                             #
@@ -315,18 +316,34 @@ def glucLoop():
   if cfg.glucFlag:
     if cfg.switchModes:
       initGlucMode()
+    else:
+      cgm.queryCgmData()
+      if
+      bs
+      mat.dispBsArr()
+      mat.printArrow()    
 
-    cfg.bsTrend == "DoubleUp"
-    mat.printArrow()
-    time.sleep(1)
-    print('gluc', flush=True)
-    time.sleep(1)
-    print('gluc', flush=True)
-    time.sleep(1)
-    print('gluc', flush=True)
-    switchIdleMode()
-    wget -q -O -  https://wakeaboo.herokuapp.com/api/v1/entries/current/?token=raspi-97846cb04ad59b51 | head -n 1
-    subprocess.call("sudo shutdown now", shell=True)
+
+#-----------------------------------------------#
+
+def checkAlarm(chan):
+  if
+   asd
+asd
+as
+asd
+asd
+asd
+asd
+asdasda
+asd
+asd
+asasd
+asd
+asd
+asd d:dhasdhasd
+asd
+asd kadsjasdasdcfg.wack1Flag = True
 #-----------------------------------------------#
 
 def wack1_callback(chan):
@@ -362,11 +379,12 @@ def main():
   initServ()
 
   while True:
+    if cfg.shutDownFlag:
+      shutDown()
+    else:
     timerServices()
     idleLoop()
     glucLoop()
-    if cfg.shutDownFlag:
-      shutDown()
 
 #-----------------------------------------------#
 

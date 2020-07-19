@@ -96,15 +96,46 @@ matCleared  = False
 pwrCntDispT = time.time()
 
 #-------wack states-------#
-wack1Flag = False
-wack2Flag = False
-wack3Flag = False
+#wack1Flag = False
+#wack2Flag = False
+#wack3Flag = False
+wackNumPress = 0
+wackPressed  = False
+targetWack   = 1
+numWacks     = 5
+
+#-------alarm states-------#
+bsHighFl    = False
+bsLowFl     = False
+bsUrLowFl   = False
+
+alarmArmed  = False
+alarmTigger = False
+alarmSound  = False
+
+#-------alarm refact-------#
+bsValTrigger = -1
+ackTim
+refacTim
+bsHighTim    = 90
+bsLowTim     = 15
+bsUrLowTim   = 6
+
 
 
 #--------------------------#
 #         cgm vars         #
 #**************************#
 #bs variables
+bsHighVal  = 200
+bsLowVal   = 80
+bsUrLowVal = 50
+bsHighThd  = 15
+bsLowThd   = 5
+bsUrLowThd = 5
+bsHighTim  = 30
+bsLowTim   = 15
+bsUrLowTim = 10
 
 # current BS state
 rawImport = None # from nighscout

@@ -15,6 +15,7 @@ import config as cfg
 import matrixDisplay as mat
 import sys
 import queryCgm as cgm
+import random
 
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
 #                             STARTUP STUFF                             #
@@ -304,12 +305,22 @@ def initPwdInterrupts():
 
 def initGlucMode():
   print('Terminating idle mode, starting Glucalarm', flush=True)
+  cfg.targetWack = random.randint(0,2)
   mat.clear8Mat()
   mat.fill16Mat(0)
   time.sleep(1)
   mat.dispGluc()
   time.sleep(2)
   cfg.switchModes = False
+  cfg.wackPressed = False
+
+
+  #TODO -- delete for debug
+  cfg.alarmTrigger = True
+  cfg.targetWack  = (cfg.targetWack + random.randint(1,2))%3
+  cfg.wackPressed = False
+  trunWackLed()
+
 #-----------------------------------------------#
 
 def glucLoop():
@@ -318,44 +329,159 @@ def glucLoop():
       initGlucMode()
     else:
       cgm.queryCgmData()
-      if
-      bs
-      mat.dispBsArr()
-      mat.printArrow()    
+      if cfg.bsData:
+        mat.dispBsArr()
+        mat.printArrow()
+      #else:
+        #TODO -- errors
 
+      if not cfg.alarmTrigger or not cgf.alarmArmed:
+        checkAlarm()
+        alarmAction()
+      if cfg.alarmTrigger:
+        playWack()
+
+      if cfg.alarmArmed and (datetime.now() > cfg.refacTim)
+        cfg.alarmArmed = False
+#-----------------------------------------------#
+
+def checkAlarm():
+  if cfg.bsValue>cfg.bsHighVal:
+    cfg.bsHighFl  = True
+    cfg.bsLowFl   = False
+    cfg.bsUrLowFl = False
+  elif cfg.bsValue<cfg.bsLowVal and cfg.bsValue>cfg.bsUrLowVal:
+    cfg.bsHighFl  = False
+    cfg.bsLowFl   = True
+    cfg.bsUrLowFl = False
+  elif cfg.bsValue<cfg.bsUrLowVal:
+    cfg.bsHighFl  = False
+    cfg.bsLowFl   = False
+    cfg.bsUrLowFl = True
+
+  if (cfg.bsHighFl or cfg.bsLowFl or cfg.bdUrLowFl) and not cfg.alarmTrigger:
+    cfg.alarmTrigger = True
+    cfg.bsValTrigger = cfg.bsValue
+    resetWackCnt()
+#-----------------------------------------------#
+
+def alarmAction():
+  #sound alarm
+  if cfg.alarmTrigger and not cfg.alarmSound:
+    cfg.alarmSound  = True
+
+    if cfg.bsHighFl:
+      print('high')
+      #TODO -- sound
+    elif cfg.bsLowFl:
+      print('low')
+      #TODO -- sound
+    elif cfg.bsUrLowFl:
+      print('UrLow')
+      #TODO -- sound
+
+    #trun first wack on
+    cfg.targetWack  = (cfg.targetWack + random.randint(1,2))%3
+    cfg.wackPressed = False
+    trunWackLed()
+#-----------------------------------------------#
+
+def playWack():
+  if cfg.wackPressed and (cfg.numWacks != 0):
+    if cfg.wackNumPress == cfg.targetWack and cfg.numWacks != 0:
+      cfg.numWacks    = cfg.numWacks-1
+      cfg.targetWack  = (cfg.targetWack + random.randint(1,2))%3
+      cfg.wackPressed = False
+      trunWackLed()
+    elif cfg.wackNumPress != cfg.targetWack and cfg.numWacks != 0:
+      resetWackCnt()
+      turnAllLed(1)
+      time.sleep(1)  
+      turnAllLed(0)
+      time.sleep(1)  
+      turnAllLed(1)
+      time.sleep(1)  
+      turnAllLed(0)
+      cfg.targetWack  = (cfg.targetWack + random.randint(1,2))%3
+      cfg.wackPressed = False
+      trunWackLed()
+  elif cfg.wackPressed and (cfg.numWacks == 0):
+    cfg.wackPressed  = False
+    turnAllLed(1)
+    time.sleep(1)  
+    turnAllLed(0)
+    ackAlarm()
+    print('ifinish play')
 
 #-----------------------------------------------#
 
-def checkAlarm(chan):
-  if
-   asd
-asd
-as
-asd
-asd
-asd
-asd
-asdasda
-asd
-asd
-asasd
-asd
-asd
-asd d:dhasdhasd
-asd
-asd kadsjasdasdcfg.wack1Flag = True
+
+def ackAlarm():
+  cgf.ackTim = datetime.now()
+
+  cfg.alarmSound   = False
+  cfg.alarmTrigger = False
+  cfg.alarmArmed   = True
+
+  #TODO -- kill alarm
+
+  if cfg.bsHighFl:
+    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsHighTim)
+  elif cfg.bsLowFl:
+    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsLowTim)
+  elif cfg.bsUrLowFl:
+    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsUrLowTim)
+  
+
+#-----------------------------------------------#
+
+
+def turnAllLed(val):
+  GPIO.output(cfg.pinWackLed1, val)
+  GPIO.output(cfg.pinWackLed2, val)
+  GPIO.output(cfg.pinWackLed3, val)
+#-----------------------------------------------#
+
+def trunWackLed():
+  GPIO.output(cfg.pinWackLed1, 0)
+  GPIO.output(cfg.pinWackLed2, 0)
+  GPIO.output(cfg.pinWackLed3, 0)
+
+  if cfg.targetWack == 0:
+    GPIO.output(cfg.pinWackLed1, 1)
+  elif cfg.targetWack == 1:
+    GPIO.output(cfg.pinWackLed2, 1)
+  elif cfg.targetWack == 2:
+    GPIO.output(cfg.pinWackLed3, 1)
+#-----------------------------------------------#
+
+def resetWackCnt():
+  if cfg.bsHighFl:
+    cfg.numWacks  = 5
+  elif cfg.bsLowFl:
+    cfg.numWacks  = 3
+  elif cfg.bsUrLowFl:
+    cfg.numWacks  = 1
+  else:
+    cfg.numWacks  = 5
 #-----------------------------------------------#
 
 def wack1_callback(chan):
-  cfg.wack1Flag = True
+  cfg.wackNumPress = 0
+  if cfg.alarmTrigger:
+    cfg.wackPressed = True
 #-----------------------------------------------#
 
 def wack2_callback(chan):
-  cfg.wack2Flag = True
+  cfg.wackNumPress = 1
+  if cfg.alarmTrigger:
+    cfg.wackPressed = True
 #-----------------------------------------------#
 
 def wack3_callback(chan):
-  cfg.wack3Flag = True
+  cfg.wackNumPress = 2
+  if cfg.alarmTrigger:
+    cfg.wackPressed = True
 #-----------------------------------------------#
 
 #-------------------------------#
@@ -382,9 +508,10 @@ def main():
     if cfg.shutDownFlag:
       shutDown()
     else:
-    timerServices()
-    idleLoop()
-    glucLoop()
+      timerServices()
+      idleLoop()
+      glucLoop()
+      playWack()
 
 #-----------------------------------------------#
 
@@ -396,7 +523,8 @@ def initServ():
   mat.clear16Mat()
 
   #init state machine flags
-  switchIdleMode()
+  #switchIdleMode()
+  switchGlucMode()
 
   #init idle mode
   #initIdleMode()
@@ -435,5 +563,4 @@ if __name__ == "__main__":
   #if ran as script
   main()
 #-----------------------------------------------#
-
 #EOF#

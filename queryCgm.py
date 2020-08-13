@@ -118,10 +118,38 @@ def queryCgmData():
 #          PRINT DATA           #
 #*******************************#
 def printCgmData():
+  tswG = True
+  tswT = True
+  
   while True:
-    queryCgmData()
-    mat.dispBsArr()
-    mat.printArrow()    
+    tnow = datetime.now()
+
+    if (tnow.hour>22) or (tnow.hour<10):
+      if tswG:
+        mat.clear8Mat()
+        mat.clear16Mat()
+        mat.dispGluc()
+        time.sleep(10)
+        mat.clear16Mat()
+        tswG = False
+        tswT = True
+        
+      queryCgmData()
+      mat.dispBsArr()
+      mat.printArrow()
+
+    else:
+      if tswT:
+        mat.clear8Mat()
+        mat.clear16Mat()
+        mat.dispTim()
+        time.sleep(10)
+        mat.clear16Mat()
+        tswG = True
+        tswT = False
+
+      mat.dispTime()
+
     time.sleep(60)    
 #-----------------------------------------------#
 

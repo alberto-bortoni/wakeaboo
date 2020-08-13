@@ -115,8 +115,8 @@ alarmSound  = False
 
 #-------alarm refact-------#
 bsValTrigger = -1
-ackTim
-refacTim
+ackTim       = datetime.now()
+refacTim     = datetime.now()
 bsHighTim    = 90
 bsLowTim     = 15
 bsUrLowTim   = 6

@@ -7,11 +7,12 @@ import os
 import time
 import subprocess
 from subprocess import PIPE, STDOUT
+from datetime import datetime
+from datetime import timedelta
 import shlex
 from time import sleep
 import RPi.GPIO as GPIO
 import config as cfg
-#import initPiState
 import matrixDisplay as mat
 import sys
 import queryCgm as cgm
@@ -311,15 +312,21 @@ def initGlucMode():
   time.sleep(1)
   mat.dispGluc()
   time.sleep(2)
-  cfg.switchModes = False
-  cfg.wackPressed = False
+  cfg.switchModes  = False
+  cfg.bsHighFl     = False
+  cfg.bsLowFl      = False
+  cfg.bsUrLowFl    = False
+  cfg.wackPressed  = False
+  cfg.alarmTrigger = False
+  cfg.alarmArmed   = False
+  cfg.alarmSound   = False
 
 
   #TODO -- delete for debug
-  cfg.alarmTrigger = True
-  cfg.targetWack  = (cfg.targetWack + random.randint(1,2))%3
-  cfg.wackPressed = False
-  trunWackLed()
+#  cfg.alarmTrigger = True
+#  cfg.targetWack  = (cfg.targetWack + random.randint(1,2))%3
+#  cfg.wackPressed = False
+#  trunWackLed()
 
 #-----------------------------------------------#
 
@@ -329,20 +336,37 @@ def glucLoop():
       initGlucMode()
     else:
       cgm.queryCgmData()
-      if cfg.bsData:
+      if not  cfg.bsData:
+        print('error')
+        noDataError()
+      else:
+        #TODO -- errors
         mat.dispBsArr()
         mat.printArrow()
-      #else:
-        #TODO -- errors
 
-      if not cfg.alarmTrigger or not cgf.alarmArmed:
-        checkAlarm()
-        alarmAction()
-      if cfg.alarmTrigger:
-        playWack()
-
-      if cfg.alarmArmed and (datetime.now() > cfg.refacTim)
-        cfg.alarmArmed = False
+        if not cfg.alarmTrigger and not cfg.alarmArmed:
+          checkAlarm()
+          alarmAction()
+        elif not cfg.alarmTrigger and cfg.alarmArmed:
+          checkPostAlarm()
+          alarmAction()
+  
+        if cfg.alarmTrigger and cfg.alarmSound and (datetime.now() < cfg.soundTim):
+          playWack()
+        if cfg.alarmTrigger and cfg.alarmSound and (datetime.now() > cfg.soundTim):
+          ackAlarm()
+          if cfg.bsHighFl:
+            cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsHighTimSz)
+          elif cfg.bsLowFl:
+            cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsLowTimSz)
+          elif cfg.bsUrLowFl:
+            cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsUrLowTimSz)
+          print('alarmed sound for a while, arming and snoozing alarm')
+        
+  
+        if cfg.alarmArmed and (datetime.now() > cfg.refacTim):
+          print('refactory time met, alarm not armed')
+          cfg.alarmArmed = False
 #-----------------------------------------------#
 
 def checkAlarm():
@@ -359,8 +383,54 @@ def checkAlarm():
     cfg.bsLowFl   = False
     cfg.bsUrLowFl = True
 
-  if (cfg.bsHighFl or cfg.bsLowFl or cfg.bdUrLowFl) and not cfg.alarmTrigger:
+  if cfg.bsHighFl:
+    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsHighTim)
+  elif cfg.bsLowFl:
+    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsLowTim)
+  elif cfg.bsUrLowFl:
+    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsUrLowTim)
+
+  if (cfg.bsHighFl or cfg.bsLowFl or cfg.bsUrLowFl) and not cfg.alarmTrigger:
+    print('bs value exceeded')
+    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsUrLowTim)
     cfg.alarmTrigger = True
+    cfg.bsValTrigger = cfg.bsValue
+    resetWackCnt()
+#-----------------------------------------------#
+
+def checkPostAlarm():
+  if cfg.bsValue>cfg.bsHighVal:
+    if cfg.bsValue>(cfg.bsValTrigger+cfg.bsHighThd):
+      cfg.bsHighFl     = True
+      cfg.bsLowFl      = False
+      cfg.bsUrLowFl    = False
+      cfg.alarmTrigger = True
+  elif cfg.bsValue<cfg.bsLowVal and cfg.bsValue>cfg.bsUrLowVal:
+    if cfg.bsValue<(cfg.bsValTrigger-cfg.bsLowThd) and cfg.bsValue>(cfg.bsValTrigger-cfg.bsUrLowThd):
+      cfg.bsHighFl     = False
+      cfg.bsLowFl      = True
+      cfg.bsUrLowFl    = False
+      cfg.alarmTrigger = True
+  elif cfg.bsValue<cfg.bsUrLowVal:
+    if cfg.bsValue<(cfg.bsValTrigger-cfg.bsUrLowThd):
+      cfg.bsHighFl     = False
+      cfg.bsLowFl      = False
+      cfg.bsUrLowFl    = True
+      cfg.alarmTrigger = True
+  else:
+    cfg.bsHighFl  = False
+    cfg.bsLowFl   = False
+    cfg.bsUrLowFl = False
+
+  if cfg.alarmTrigger:
+    print('Armed: threshold exceeded')
+    if cfg.bsHighFl:
+      cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsHighTim)
+    elif cfg.bsLowFl:
+      cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsLowTim)
+    elif cfg.bsUrLowFl:
+      cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsUrLowTim)
+
     cfg.bsValTrigger = cfg.bsValue
     resetWackCnt()
 #-----------------------------------------------#
@@ -369,6 +439,7 @@ def alarmAction():
   #sound alarm
   if cfg.alarmTrigger and not cfg.alarmSound:
     cfg.alarmSound  = True
+    cfg.soundTim  = datetime.now() + timedelta(minutes=cfg.soundKillTim)
 
     if cfg.bsHighFl:
       print('high')
@@ -410,14 +481,22 @@ def playWack():
     turnAllLed(1)
     time.sleep(1)  
     turnAllLed(0)
+    print('finished wack play')
     ackAlarm()
-    print('ifinish play')
-
 #-----------------------------------------------#
 
+def noDataError():
+  cfg.bsHighFl     = False
+  cfg.bsLowFl      = False
+  cfg.bsUrLowFl    = False
+  cfg.wackPressed  = False
+  cfg.alarmTrigger = False
+  cfg.alarmArmed   = False
+  cfg.alarmSound   = False
+#-----------------------------------------------#
 
 def ackAlarm():
-  cgf.ackTim = datetime.now()
+  cfg.ackTim = datetime.now()
 
   cfg.alarmSound   = False
   cfg.alarmTrigger = False
@@ -426,15 +505,14 @@ def ackAlarm():
   #TODO -- kill alarm
 
   if cfg.bsHighFl:
-    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsHighTim)
+    tmp = cfg.bsValue+cfg.bsHighThd
   elif cfg.bsLowFl:
-    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsLowTim)
+    tmp = cfg.bsValue+cfg.bsUrLowThd
   elif cfg.bsUrLowFl:
-    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsUrLowTim)
-  
+    tmp = cfg.bsValue+cfg.bsLowThd
 
+  print('Alarm ack: armed until:', cfg.refacTim.strftime("%X"), ' or bs value of: %d '%(tmp))
 #-----------------------------------------------#
-
 
 def turnAllLed(val):
   GPIO.output(cfg.pinWackLed1, val)
@@ -511,14 +589,12 @@ def main():
       timerServices()
       idleLoop()
       glucLoop()
-      playWack()
 
 #-----------------------------------------------#
 
 def initServ():
   #init pi state
   cfg.init()
- # initPiState.initPi()
   mat.clear8Mat()
   mat.clear16Mat()
 
@@ -526,10 +602,6 @@ def initServ():
   #switchIdleMode()
   switchGlucMode()
 
-  #init idle mode
-  #initIdleMode()
-  #initGlucMode()
-  
   #init timers
   initTimer90()
   initTimer15()
@@ -556,7 +628,9 @@ def shutDown():
   mat.dispShd()
   print('shutting down glucalarm', flush=True)
   time.sleep(2)
-  #subprocess.call("sudo shutdown now", shell=True)
+  mat.clear8Mat()
+  mat.fill16Mat(0)
+  subprocess.call("sudo shutdown now", shell=True)
 #-----------------------------------------------#
 
 if __name__ == "__main__":

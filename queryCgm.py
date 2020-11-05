@@ -124,7 +124,7 @@ def printCgmData():
   while True:
     tnow = datetime.now()
 
-    if (tnow.hour>22) or (tnow.hour<10):
+    if (tnow.hour>=22) or (tnow.hour<=10):
       if tswG:
         mat.clear8Mat()
         mat.clear16Mat()

@@ -114,12 +114,10 @@ alarmTigger = False
 alarmSound  = False
 
 #-------alarm refact-------#
-bsValTrigger = -1
-ackTim       = datetime.now()
-refacTim     = datetime.now()
-bsHighTim    = 90
-bsLowTim     = 15
-bsUrLowTim   = 6
+bsValTrigger  = -1
+soundTim      = datetime.now()
+refacTim      = datetime.now()
+soundKillTim  = 1
 
 
 
@@ -127,15 +125,18 @@ bsUrLowTim   = 6
 #         cgm vars         #
 #**************************#
 #bs variables
-bsHighVal  = 200
-bsLowVal   = 80
-bsUrLowVal = 50
-bsHighThd  = 15
-bsLowThd   = 5
-bsUrLowThd = 5
-bsHighTim  = 30
-bsLowTim   = 15
-bsUrLowTim = 10
+bsHighVal     = 250
+bsLowVal      = 90
+bsUrLowVal    = 50
+bsHighThd     = 30
+bsLowThd      = 10
+bsUrLowThd    = 3
+bsHighTim     = 90
+bsLowTim      = 15
+bsUrLowTim    = 5
+bsHighTimSz   = 15
+bsLowTimSz    = 5
+bsUrLowTimiSz = 0
 
 # current BS state
 rawImport = None # from nighscout

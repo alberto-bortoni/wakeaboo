@@ -25,198 +25,41 @@ import random
 
 
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
-#                                TIMERS                                 #
+#                                 LAMP                                  #
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
 
-def timerServices():
-  timer90Loop()
-  timer15Loop()
-
-#-------------------------------#
-#         90MIN TIMER           #
-#*******************************#
-def initTimer90():
-  cfg.tim90First  = False
-  cfg.tim90Run    = False
-  cfg.tim90Finish = False
-  cfg.tim90End    = False
-  cfg.tim90BtT0   = time.time()
-  cfg.tim90Start  = time.time()
-  cfg.tim90Last   = time.time()
-#-----------------------------------------------#
-
-def startTimer90():
-  print('start 90min timer')
-  cfg.tim90First  = False
-  cfg.tim90Run    = True
-  cfg.tim90Finish = False
-  cfg.tim90End    = False
-  cfg.tim90BtT0   = time.time()
-  cfg.tim90Start  = time.time()
-  cfg.tim90Last   = time.time()
-  mat.fill16Bar(1)
-  time.sleep(0.5)
-  mat.fill16Bar(0)
-  time.sleep(0.5)
-#-----------------------------------------------#
-
-def stopTimer90():
-  print('stoping 90min timer')
-  cfg.tim90First  = False
-  cfg.tim90Run    = False
-  cfg.tim90Finish = False
-  cfg.tim90End    = False
-  mat.fill16Bar(1)
-  time.sleep(0.5)
-  mat.fill16Bar(0)
-  time.sleep(0.5)
-  mat.fill16Bar(1)
-  time.sleep(0.5)
-  mat.fill16Bar(0)
-#-----------------------------------------------#
-
-def timer90Loop():
-  if not (cfg.tim15First and cfg.tim15Run and cfg.tim15Finish and cfg.tim15End):
-    if cfg.tim90First:
-      startTimer90()
-
-    elif cfg.tim90Run:
-      if cfg.tim90Dur<=(time.time()-cfg.tim90Start):
-        cfg.tim90Finish = True
-      elif (time.time()-cfg.tim90Last)>0.5:
-        cfg.tim90Last = time.time()
-        mat.print16Bar(cfg.tim90Dur, (time.time()-cfg.tim90Start)) 
-
-    elif cfg.tim90Finish:
-      timer90Alarm()  
-
-    elif cfg.tim90End:
-      stopTimer90()
-#-----------------------------------------------#
-
-def timer90Alarm():
-  #TODO -- add alarm
-  if cfg.tim90Finish:
-    stopTimer90()
-    print('90 alarm')
-    time.sleep(2)
-    print('90 alarm off')
-#-----------------------------------------------#
-
-def timer90min_callback(chan):
-  if not GPIO.input(cfg.pinTimerBt1) and not cfg.tim90BtPress:
-    print('90minBt press', flush=True)
-    cfg.tim90BtPress = True
-    cfg.tim90BtT0    = time.time()
-  elif cfg.tim90BtPress:
-    print('90minBt depress', flush=True)
-    cfg.tim90BtPress = False
-    td = time.time()-cfg.tim90BtT0
-    if td>2 and not cfg.tim90Run:
-      cfg.tim90First = True
-    elif td>2 and cfg.tim90Run:
-      cfg.tim90End   = True
-  else:
-    cfg.tim90BtPress = False
-#-----------------------------------------------#
-
-#-------------------------------#
-#         15MIN TIMER           #
-#*******************************#
-def initTimer15():
-  cfg.tim15First  = False
-  cfg.tim15Run    = False
-  cfg.tim15Finish = False
-  cfg.tim15End    = False
-  cfg.tim15BtT0   = time.time()
-  cfg.tim15Start  = time.time()
-  cfg.tim15Last   = time.time()
-#-----------------------------------------------#
-
-def startTimer15():
-  print('start 15min timer')
-  cfg.tim15First  = False
-  cfg.tim15Run    = True
-  cfg.tim15Finish = False
-  cfg.tim15End    = False
-  cfg.tim15BtT0   = time.time()
-  cfg.tim15Start  = time.time()
-  cfg.tim15Last   = time.time()
-  mat.fill16Bar(1)
-  time.sleep(0.5)
-  mat.fill16Bar(0)
-  time.sleep(0.5)
-#-----------------------------------------------#
-
-def stopTimer15():
-  print('stoping 15min timer')
-  cfg.tim15First  = False
-  cfg.tim15Run    = False
-  cfg.tim15Finish = False
-  cfg.tim15End    = False
-  mat.fill16Bar(1)
-  time.sleep(0.5)
-  mat.fill16Bar(0)
-  time.sleep(0.5)
-  mat.fill16Bar(1)
-  time.sleep(0.5)
-  mat.fill16Bar(0)
-#-----------------------------------------------#
-
-def timer15Loop():
-  if not (cfg.tim90First and cfg.tim90Run and cfg.tim90Finish and cfg.tim90End):
-    if cfg.tim15First:
-      startTimer15()
-
-    elif cfg.tim15Run:
-      if cfg.tim15Dur<=(time.time()-cfg.tim15Start):
-        cfg.tim15Finish = True
-      elif (time.time()-cfg.tim15Last)>0.5:
-        cfg.tim15Last = time.time()
-        mat.print16Bar(cfg.tim15Dur, (time.time()-cfg.tim15Start)) 
-
-    elif cfg.tim15Finish:
-      timer15Alarm()
-
-    elif cfg.tim15End:
-      stopTimer15()
-#-----------------------------------------------#
-
-def timer15Alarm():
-  #TODO -- add alarm
-  if cfg.tim15Finish:
-    stopTimer15()
-    print('15 alarm')
-    time.sleep(2)
-    print('15 alarm off')
-#-----------------------------------------------#
-
-def timer15min_callback(chan):
-  if not GPIO.input(cfg.pinTimerBt2) and not cfg.tim15BtPress:
-    print('15minBt press', flush=True)
-    cfg.tim15BtPress = True
-    cfg.tim15BtT0    = time.time()
-  #elif GPIO.input(cfg.pinPowerBt) and cfg.pwrBtPress:
-  elif cfg.tim15BtPress:
-    print('15minBt depress', flush=True)
-    cfg.tim15BtPress = False
-    td = time.time()-cfg.tim15BtT0
-    if td>2 and not cfg.tim15Run:
-      cfg.tim15First = True
-    elif td>2 and cfg.tim15Run:
-      cfg.tim15End   = True
-  else:
-    cfg.tim15BtPress = False
+def lamp_callback(chan):
+  GPIO.output(cfg.pinHighPowerLed, not GPIO.input(cfg.pinHighPowerLed))
 #-----------------------------------------------#
 
 #-------------------------------#
 #          INTERRUPTS           #
 #*******************************#
-def initTimInterrupts():
-  GPIO.add_event_detect(cfg.pinTimerBt1, GPIO.BOTH, callback=timer90min_callback, bouncetime=70)
+def initLampInterrupts():
+  GPIO.add_event_detect(cfg.pinLampBt, GPIO.FALLING, callback=lamp_callback, bouncetime=300)
   time.sleep(1)  
-  GPIO.add_event_detect(cfg.pinTimerBt2, GPIO.BOTH, callback=timer15min_callback, bouncetime=70)
+
+
+
+#|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
+#                              SWITCH MODE                              #
+#|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
+
+def switchMode_callback(chan):
+  if not cfg.switchModes and cfg.idleFlag: 
+    switchGlucMode()
+  if not cfg.switchModes and cfg.glucFlag and not cfg.alarmTrigger and not cfg.alarmSound: 
+    switchIdleMode()
+#-----------------------------------------------#
+
+#-------------------------------#
+#          INTERRUPTS           #
+#*******************************#
+def initModeInterrupts():
+  GPIO.add_event_detect(cfg.pinModeBt, GPIO.FALLING, callback=switchMode_callback, bouncetime=300)
   time.sleep(1)  
+
+
 
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
 #                           ENABLE/SHUTDOWN                             #
@@ -235,13 +78,17 @@ def initTimInterrupts():
 #             LOOP              #
 #*******************************#
 def initIdleMode():
-  print("starting idle mode")
+  print('Terminating Glucalarm, starting Idle mode', flush=True)
   GPIO.output(cfg.pinPowerLed, 0)
   cfg.pwrBtPress  = False
   cfg.matCleared  = False
   cfg.pwrCntDispT = time.time()
   cfg.idleT0      = time.time()
   mat.clear8Mat()
+  mat.fill16Mat(0)
+  time.sleep(1)
+  mat.dispTim()
+  time.sleep(2)
   mat.fill16Mat(0)
   cfg.switchModes = False
 #-----------------------------------------------#
@@ -282,11 +129,6 @@ def power_callback(chan):
     td = time.time()-cfg.idleT0
     if td>10:
       cfg.shutDownFlag = True
-    elif td>2:
-      if not cfg.switchModes and cfg.idleFlag: 
-        switchGlucMode()
-      if not cfg.switchModes and cfg.glucFlag:#TODO -- not alarm sounding 
-        switchIdleMode()
     else:
       print('pwrBt press dur {:8.2f}'.format(td), flush=True)
   else:
@@ -300,12 +142,13 @@ def initPwdInterrupts():
   GPIO.add_event_detect(cfg.pinPowerBt, GPIO.BOTH, callback=power_callback, bouncetime=70)
   time.sleep(1)  
 
+
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
 #                              GLUCALARM                                #
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
 
 def initGlucMode():
-  print('Terminating idle mode, starting Glucalarm', flush=True)
+  print('Terminating Idle mode, starting Glucalarm', flush=True)
   cfg.targetWack = random.randint(0,2)
   mat.clear8Mat()
   mat.fill16Mat(0)
@@ -320,22 +163,18 @@ def initGlucMode():
   cfg.alarmTrigger = False
   cfg.alarmArmed   = False
   cfg.alarmSound   = False
-
-
-  #TODO -- delete for debug
-#  cfg.alarmTrigger = True
-#  cfg.targetWack  = (cfg.targetWack + random.randint(1,2))%3
-#  cfg.wackPressed = False
-#  trunWackLed()
-
+  cfg.queryTim     = datetime.now()
 #-----------------------------------------------#
 
 def glucLoop():
   if cfg.glucFlag:
     if cfg.switchModes:
       initGlucMode()
-    else:
+    
+    elif(datetime.now()>(cfg.queryTim + timedelta(seconds=cfg.queryInt))):
       cgm.queryCgmData()
+      cfg.queryTim = datetime.now()
+
       if not  cfg.bsData:
         print('error')
         noDataError()
@@ -354,15 +193,7 @@ def glucLoop():
         if cfg.alarmTrigger and cfg.alarmSound and (datetime.now() < cfg.soundTim):
           playWack()
         if cfg.alarmTrigger and cfg.alarmSound and (datetime.now() > cfg.soundTim):
-          ackAlarm()
-          if cfg.bsHighFl:
-            cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsHighTimSz)
-          elif cfg.bsLowFl:
-            cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsLowTimSz)
-          elif cfg.bsUrLowFl:
-            cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsUrLowTimSz)
-          print('alarmed sound for a while, arming and snoozing alarm')
-        
+          snoozeAlarm()
   
         if cfg.alarmArmed and (datetime.now() > cfg.refacTim):
           print('refactory time met, alarm not armed')
@@ -417,10 +248,10 @@ def checkPostAlarm():
       cfg.bsLowFl      = False
       cfg.bsUrLowFl    = True
       cfg.alarmTrigger = True
-  else:
-    cfg.bsHighFl  = False
-    cfg.bsLowFl   = False
-    cfg.bsUrLowFl = False
+#  else:
+#    cfg.bsHighFl  = False
+#    cfg.bsLowFl   = False
+#    cfg.bsUrLowFl = False
 
   if cfg.alarmTrigger:
     print('Armed: threshold exceeded')
@@ -477,12 +308,12 @@ def playWack():
       cfg.wackPressed = False
       trunWackLed()
   elif cfg.wackPressed and (cfg.numWacks == 0):
-    cfg.wackPressed  = False
-    turnAllLed(1)
-    time.sleep(1)  
-    turnAllLed(0)
-    print('finished wack play')
-    ackAlarm()
+      cfg.wackPressed  = False
+      turnAllLed(1)
+      time.sleep(1)  
+      turnAllLed(0)
+      print('finished wack play')
+      ackAlarm()
 #-----------------------------------------------#
 
 def noDataError():
@@ -493,6 +324,30 @@ def noDataError():
   cfg.alarmTrigger = False
   cfg.alarmArmed   = False
   cfg.alarmSound   = False
+  mat.dispErr()
+#-----------------------------------------------#
+
+def snoozeAlarm():
+  cfg.numWacks     = 0
+  cfg.wackPressed  = False
+
+  turnAllLed(1)
+  time.sleep(1)  
+  turnAllLed(0)
+
+  cfg.alarmSound   = False
+  cfg.alarmTrigger = False
+  cfg.alarmArmed   = True
+
+  #TODO -- kill alarm
+
+  if cfg.bsHighFl:
+    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsHighTimSz)
+  elif cfg.bsLowFl:
+    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsLowTimSz)
+  elif cfg.bsUrLowFl:
+    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsUrLowTimSz)
+  print('alarmed sounded for a while, arming and snoozing until', cfg.refacTim.strftime("%X"))
 #-----------------------------------------------#
 
 def ackAlarm():
@@ -573,23 +428,20 @@ def initGlucInterrupts():
   GPIO.add_event_detect(cfg.pinWackBt3, GPIO.FALLING, callback=wack3_callback, bouncetime=70)
   time.sleep(1)
 
+
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
 #                                MAIN                                   #
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
 
-
 def main():
-
   initServ()
 
   while True:
     if cfg.shutDownFlag:
       shutDown()
     else:
-      timerServices()
       idleLoop()
       glucLoop()
-
 #-----------------------------------------------#
 
 def initServ():
@@ -599,16 +451,13 @@ def initServ():
   mat.clear16Mat()
 
   #init state machine flags
-  #switchIdleMode()
-  switchGlucMode()
-
-  #init timers
-  initTimer90()
-  initTimer15()
+  switchIdleMode()
+  #switchGlucMode()
 
   #define interrupt callbacks
   initPwdInterrupts()
-  initTimInterrupts()
+  initLampInterrupts()
+  initModeInterrupts()
   initGlucInterrupts()
 #-----------------------------------------------#
 

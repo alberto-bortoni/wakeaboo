@@ -117,22 +117,12 @@ def dispTime():
   mi1 = timenow.minute//10
   mi2 = timenow.minute%10
 
-#  if hr1 == 0:
-#    cfg.ledmat[0:7, 0: 3] = numSmall(10)
-#  else:
-#    cfg.ledmat[0:7, 0: 3] = numSmall(hr1)
-  
   cfg.ledmat[0:7, 0: 3] = numSmall(hr1)
-  cfg.ledmat[0:7, 4: 7]   = numSmall(hr2)
-  cfg.ledmat[0:7, 7: 9]   = colon
-  
-#  if mi1 == 0:
-#    cfg.ledmat[0:7, 9:12] = numSmall(10) 
-#  else:
-#    cfg.ledmat[0:7, 9:12] = numSmall(mi1) 
+  cfg.ledmat[0:7, 4: 7] = numSmall(hr2)
+  cfg.ledmat[0:7, 7: 9] = colon
   
   cfg.ledmat[0:7, 9:12] = numSmall(mi1) 
-  cfg.ledmat[0:7,13:16]   = numSmall(mi2)
+  cfg.ledmat[0:7,13:16] = numSmall(mi2)
 
   print16Mat()
 #-----------------------------------------------#
@@ -158,6 +148,15 @@ def dispGluc():
   cfg.ledmat[0:7, 1: 5] = charBig("g")
   cfg.ledmat[0:7, 6:10] = charBig("l")
   cfg.ledmat[0:7,11:15] = charBig("u")
+  print16Mat()
+#-----------------------------------------------#
+
+def dispErr():
+  cfg.ledmat[0:7, 1: 5] = charBig("n")
+  cfg.ledmat[0:7, 6:10] = charBig("o")
+  cfg.ledmat[0:7,11:15] = charBig("d")
+
+  printArrow()
   print16Mat()
 #-----------------------------------------------#
 
@@ -196,24 +195,28 @@ def dispBsArr():
 
 
 def printArrow():
-  if cfg.bsTrend == "DoubleUp":
-    cfg.arrmat = arrows(1)
-  elif cfg.bsTrend == "SingleUp":
-    cfg.arrmat = arrows(2)
-  elif cfg.bsTrend == "FortyFiveUp":
-    cfg.arrmat = arrows(3)
-  elif cfg.bsTrend == "Flat":
-    cfg.arrmat = arrows(4)
-  elif cfg.bsTrend == "FortyFiveDown":
-    cfg.arrmat = arrows(5)
-  elif cfg.bsTrend == "SingleDown":
-    cfg.arrmat = arrows(6)
-  elif cfg.bsTrend == "DoubleDown":
-    cfg.arrmat = arrows(7)
-  elif cfg.bsTrend == "nan":
-    cfg.arrmat = arrows(8)
+  if cfg.bsData:
+    if cfg.bsTrend == "DoubleUp":
+      cfg.arrmat = arrows(1)
+    elif cfg.bsTrend == "SingleUp":
+      cfg.arrmat = arrows(2)
+    elif cfg.bsTrend == "FortyFiveUp":
+      cfg.arrmat = arrows(3)
+    elif cfg.bsTrend == "Flat":
+      cfg.arrmat = arrows(4)
+    elif cfg.bsTrend == "FortyFiveDown":
+      cfg.arrmat = arrows(5)
+    elif cfg.bsTrend == "SingleDown":
+      cfg.arrmat = arrows(6)
+    elif cfg.bsTrend == "DoubleDown":
+      cfg.arrmat = arrows(7)
+    elif cfg.bsTrend == "nan":
+      cfg.arrmat = arrows(8)
+    else:
+      cfg.arrmat = arrows(0)
   else:
-    cfg.arrmat = arrows(0)
+    cfg.arrmat = arrows(9)
+
   #installed flipped to what originally thought
   cfg.arrmat = np.rot90(cfg.arrmat,2)
   print8Mat()
@@ -334,20 +337,30 @@ def charBig(char):
                      [1,0,0,1],[1,0,0,1],
                      [1,1,1,1]])
   elif char == "t":
-    return np.array([[1,1,1,1],[1,1,1,1],
-                     [0,1,1,0],[0,1,1,0],
-                     [0,1,1,0],[0,1,1,0],
-                     [0,1,1,0]])
+    return np.array([[0,1,1,1],[0,0,1,0],
+                     [0,0,1,0],[0,0,1,0],
+                     [0,0,1,0],[0,0,1,0],
+                     [0,0,1,0]])
   elif char == "i":
-    return np.array([[1,1,1,1],[0,1,1,0],
-                     [0,1,1,0],[0,1,1,0],
-                     [0,1,1,0],[0,1,1,0],
-                     [1,1,1,1]])
+    return np.array([[0,1,1,1],[0,0,1,0],
+                     [0,0,1,0],[0,0,1,0],
+                     [0,0,1,0],[0,0,1,0],
+                     [0,1,1,1]])
   elif char == "m":
-    return np.array([[1,0,0,1],[1,1,1,1],
-                     [1,1,1,1],[1,0,0,1],
-                     [1,0,0,1],[1,0,0,1],
+    return np.array([[0,1,0,1],[0,1,0,1],
+                     [0,1,1,1],[0,1,1,1],
+                     [0,1,0,1],[0,1,0,1],
+                     [0,1,0,1]])
+  elif char == "n":
+    return np.array([[1,0,0,1],[1,0,0,1],
+                     [1,1,0,1],[1,1,0,1],
+                     [1,0,1,1],[1,0,1,1],
                      [1,0,0,1]])
+  elif char == "o":
+    return np.array([[1,1,1,1],[1,0,0,1],
+                     [1,0,0,1],[1,0,0,1],
+                     [1,0,0,1],[1,0,0,1],
+                     [1,1,1,1]])
   elif char == "s":
     return np.array([[1,1,1,1],[1,0,0,0],
                      [1,0,0,0],[0,1,1,0],

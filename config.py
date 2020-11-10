@@ -1,6 +1,5 @@
 #! /usr/bin/python3
 
-
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
 #                              HEAD                                     #
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
@@ -15,9 +14,8 @@ import matrixDisplay as mat
 
 
 #--------------------------#
-#       define gpio        #
+#         process          #
 #**************************#
-#process variables
 printDebug = False
 
 
@@ -32,9 +30,9 @@ pinWackLed1 = 20
 pinWackLed2 = 21
 pinWackLed3 = 16
 
-#timers (T->B)
-pinTimerBt1 = 17
-pinTimerBt2 = 27
+#GPIO buttons (T->B)
+pinLampBt = 17
+pinModeBt = 27
 
 #power button
 pinPowerBt  = 22
@@ -59,32 +57,8 @@ glucFlag     = False
 timerFlag    = False
 shutDownFlag = False
 
-#-------timer alarms------#
-#init pi state
-tim90BtT0    = time.time()
+#----------lamp------------#
 
-#trun on led
-tim90BtPress = False
-tim90Run     = False
-tim90Finish  = False
-tim90Last    = time.time()
-tim90Start   = time.time()
-tim90Dur     = 5400
-tim90First   = False
-tim90End     = False
-
-#init pi state
-tim15BtT0    = time.time()
-
-#trun on led
-tim15BtPress = False
-tim15Run     = False
-tim15Finish  = False
-tim15Last    = time.time()
-tim15Start   = time.time()
-tim15Dur     = 900
-tim15First   = False
-tim15End     = False
 
 #-------enable shutD------#
 #init pi state
@@ -96,9 +70,6 @@ matCleared  = False
 pwrCntDispT = time.time()
 
 #-------wack states-------#
-#wack1Flag = False
-#wack2Flag = False
-#wack3Flag = False
 wackNumPress = 0
 wackPressed  = False
 targetWack   = 1
@@ -136,9 +107,9 @@ bsLowTim      = 15
 bsUrLowTim    = 5
 bsHighTimSz   = 15
 bsLowTimSz    = 5
-bsUrLowTimiSz = 0
+bsUrLowTimiSz = 0.5
 
-# current BS state
+#current BS state
 rawImport = None # from nighscout
 bsTime    = datetime.now()
 bsValue   = 0     # mg/dl
@@ -150,6 +121,10 @@ noDataTh  = 10    # no data treshold in min
 timeStr   = None
 cgmErr    = None  #TODO -- enum error
 #TODO -- matrix display error to enum map
+
+# query state
+queryInt  = 60 #in seconds
+queryTim  = datetime.now()
 
 
 #--------------------------#
@@ -176,8 +151,8 @@ def init():
   GPIO.setup(pinWackLed3, GPIO.OUT, initial=0)
 
   #state of timer buttons
-  GPIO.setup(pinTimerBt1, GPIO.IN)
-  GPIO.setup(pinTimerBt2, GPIO.IN)
+  GPIO.setup(pinLampBt, GPIO.IN)
+  GPIO.setup(pinModeBt, GPIO.IN)
 
   #state of power button
   GPIO.setup(pinPowerBt, GPIO.IN)

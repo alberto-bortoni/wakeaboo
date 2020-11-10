@@ -22,7 +22,7 @@ import matrixDisplay as mat
 #-------------------------------#
 #             VARS              #
 #*******************************#
-printLog = True
+printLog = False
 
 
 #-------------------------------#
@@ -38,11 +38,6 @@ def queryCgmData():
   rawParts   = castTab.findall(rawImport)
 
 
-  #-------error check-------#
-  #TODO -- if cant parse, access tthen no data
-  
-
-
   #-----print if enable-----#
   if cfg.printDebug:
     print(rawImport)
@@ -53,20 +48,23 @@ def queryCgmData():
     logFile.close()
 
 
-  #-----change timezone-----#
-  #take timestamp
-  #currently heroku reports only in 'z' or UTC time
+  #-------error check-------#
   try:
     timeStr    = rawParts[0][1:20]
+    tmpTime    = datetime.strptime(timeStr, '%Y-%m-%dT%H:%M:%S')
 
   except:
+    cfg.bsData = False
+
     if printLog:
       logFile  = open("logImport.txt", "a+")
       logFile.write("exception"+"\n")
       logFile.close()
 
   else:
-    tmpTime    = datetime.strptime(timeStr, '%Y-%m-%dT%H:%M:%S')
+  #-----change timezone-----#
+  #take timestamp
+  #currently heroku reports only in 'z' or UTC time
     tmpTime    = tmpTime.replace(tzinfo = timezone('UTC'))
     cfg.bsTime = tmpTime.astimezone(timezone('US/Eastern'))
 

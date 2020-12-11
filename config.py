@@ -86,6 +86,7 @@ alarmSound  = False
 
 #-------alarm refact-------#
 bsValTrigger  = -1
+snoozeTim     = datetime.now()
 soundTim      = datetime.now()
 refacTim      = datetime.now()
 soundKillTim  = 1
@@ -97,8 +98,8 @@ soundKillTim  = 1
 #**************************#
 #bs variables
 bsHighVal     = 250
-bsLowVal      = 90
-bsUrLowVal    = 50
+bsLowVal      = 80
+bsUrLowVal    = 55
 bsHighThd     = 30
 bsLowThd      = 10
 bsUrLowThd    = 3
@@ -108,6 +109,8 @@ bsUrLowTim    = 5
 bsHighTimSz   = 15
 bsLowTimSz    = 5
 bsUrLowTimiSz = 0.5
+bsInRangeH    = 180 
+bsInRangeL    = 90
 
 #current BS state
 rawImport = None # from nighscout
@@ -123,7 +126,7 @@ cgmErr    = None  #TODO -- enum error
 #TODO -- matrix display error to enum map
 
 # query state
-queryInt  = 60 #in seconds
+queryInt  = 20 #in seconds
 queryTim  = datetime.now()
 
 
@@ -162,6 +165,8 @@ def init():
   GPIO.setup(pinHighPowerLed, GPIO.OUT, initial=0)
 
   #turn off led matrices
+  mat.setDisp8Brightness(1)
+  mat.setDisp16Brightness(0)
   mat.clear8Mat()
   mat.clear16Mat()
 

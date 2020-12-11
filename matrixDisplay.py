@@ -27,6 +27,32 @@ disp8 = Matrix8x8(i2c, address=0x70)
 disp8.blink_rate = 0
 disp8.brightness = 0
 
+#################################
+#        BASE FUNCTIONS         #
+#################################
+
+
+#technically goes to 8 but keeping it 0-2
+def setDisp8Brightness(val):
+  if(val<0):
+    disp8.brightness = 0
+  elif(val>2):
+    disp8.brightness = 2/16
+  else:
+    disp8.brightness = val/16
+#-----------------------------------------------#
+
+
+#technically goes to 8 but keeping it 0-2
+def setDisp16Brightness(val):
+  if(val<0):
+    disp16.brightness = 0
+  elif(val>2):
+    disp16.brightness = 2/16
+  else:
+    disp16.brightness = val/16
+#-----------------------------------------------#
+
 
 
 #################################

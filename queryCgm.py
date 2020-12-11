@@ -22,8 +22,8 @@ import matrixDisplay as mat
 #-------------------------------#
 #             VARS              #
 #*******************************#
-printLog = False
-
+printLog  = False
+testquery = False
 
 #-------------------------------#
 #         GET CGM DATA          #
@@ -32,7 +32,7 @@ def queryCgmData():
 
   #-----get cloud info------#
   #cast date and correct for timezone bug
-  rawImport  =  subprocess.check_output('wget -q -O - https://glucalarm.herokuapp.com/api/v1/entries/current/?token=raspi-97846cb04ad59b51 | head -n 1', shell=True)
+  rawImport  =  subprocess.check_output('wget -q -O - https://glucalarm.herokuapp.com/api/v1/entries/current/?token=raspi-9a0616ad23b0e606 | head -n 1', shell=True)
   rawImport  = rawImport.decode('utf-8')
   castTab    = re.compile("[^\t]+")
   rawParts   = castTab.findall(rawImport)
@@ -54,6 +54,7 @@ def queryCgmData():
     tmpTime    = datetime.strptime(timeStr, '%Y-%m-%dT%H:%M:%S')
 
   except:
+    print('error, data cannot be parsed')
     cfg.bsData = False
 
     if printLog:
@@ -73,6 +74,7 @@ def queryCgmData():
     # if data is older than X min, no data
     if datetime.now(timezone('US/Eastern'))-timedelta(minutes=cfg.noDataTh) > cfg.bsTime:
       cfg.bsData = False
+      print('Query error, data is too old')
     else:
       cfg.bsData = True
 
@@ -110,6 +112,13 @@ def queryCgmData():
     else:
       cfg.bsDirec = "nan"
       cfg.bsDrop  = 0
+
+
+    if(testquery):
+      fileread = open("sandbox/bsvalue.txt", "r")
+      bstext   = fileread.readline() 
+      cfg.bsValue = int(bstext)
+      fileread.close()
 #-----------------------------------------------#
 
 #-------------------------------#

@@ -37,7 +37,7 @@ def lamp_callback(chan):
 #*******************************#
 def initLampInterrupts():
   GPIO.add_event_detect(cfg.pinLampBt, GPIO.FALLING, callback=lamp_callback, bouncetime=300)
-  time.sleep(1)  
+  time.sleep(1)
 
 
 
@@ -46,9 +46,9 @@ def initLampInterrupts():
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
 
 def switchMode_callback(chan):
-  if not cfg.switchModes and cfg.idleFlag: 
+  if not cfg.switchModes and cfg.idleFlag:
     switchGlucMode()
-  if not cfg.switchModes and cfg.glucFlag and not cfg.alarmTrigger and not cfg.alarmSound: 
+  if not cfg.switchModes and cfg.glucFlag and not cfg.alarmTrigger and not cfg.alarmSound:
     switchIdleMode()
 #-----------------------------------------------#
 
@@ -57,7 +57,7 @@ def switchMode_callback(chan):
 #*******************************#
 def initModeInterrupts():
   GPIO.add_event_detect(cfg.pinModeBt, GPIO.FALLING, callback=switchMode_callback, bouncetime=300)
-  time.sleep(1)  
+  time.sleep(1)
 
 
 
@@ -68,10 +68,10 @@ def initModeInterrupts():
 #use the power button and annother button
 #to perform the enable/turnoff
 #to enale click the power button for 4 seconds
-#to shutdown (which should be rare) click the 
+#to shutdown (which should be rare) click the
 #power button for 10 senconds
 #device cant be turned off while alarmapp is running
-#becahse this service is killed before alarm main and 
+#becahse this service is killed before alarm main and
 #restarted after it terminates
 
 #-------------------------------#
@@ -94,27 +94,23 @@ def initIdleMode():
 #-----------------------------------------------#
 
 def idleLoop():
-  if cfg.idleFlag:
-    if cfg.switchModes:
-      initIdleMode()
+  if cfg.pwrBtPress:
+    GPIO.output(cfg.pinPowerLed, 1)
 
-    if cfg.pwrBtPress:
-      GPIO.output(cfg.pinPowerLed, 1)
+    if not cfg.matCleared:
+      mat.fill16Mat(0)
+      cfg.matCleared = True
+    if((time.time()-cfg.pwrCntDispT)>0.2):
+      mat.dispNumber(time.time()-cfg.idleT0)
+      cfg.pwrCntDispT = time.time()
 
-      if not cfg.matCleared:
-        mat.fill16Mat(0)
-        cfg.matCleared = True
-      if((time.time()-cfg.pwrCntDispT)>0.2):
-        mat.dispNumber(time.time()-cfg.idleT0)
-        cfg.pwrCntDispT = time.time()
+  else:
+    if cfg.matCleared:
+      mat.fill16Mat(0)
+      cfg.matCleared = False
+    GPIO.output(cfg.pinPowerLed, 0)
+    mat.dispTime()
 
-    else:
-      if cfg.matCleared:
-        mat.fill16Mat(0)
-        cfg.matCleared = False
-      GPIO.output(cfg.pinPowerLed, 0)
-      mat.dispTime()
-    
 #-----------------------------------------------#
 
 def power_callback(chan):
@@ -140,7 +136,7 @@ def power_callback(chan):
 #*******************************#
 def initPwdInterrupts():
   GPIO.add_event_detect(cfg.pinPowerBt, GPIO.BOTH, callback=power_callback, bouncetime=70)
-  time.sleep(1)  
+  time.sleep(1)
 
 
 #|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||#
@@ -167,122 +163,193 @@ def initGlucMode():
 #-----------------------------------------------#
 
 def glucLoop():
-  if cfg.glucFlag:
-    if cfg.switchModes:
-      initGlucMode()
+  cgmLoop()
+
+  if not cfg.bsData:
+    noDataError()
+  else:
+    mat.dispBsArr()
+    mat.printArrow()
+
+    #normal
+    if not cfg.alarmTrigger and not cfg.alarmArmed and not cfg.alarmSound:
+      checkAlarm()
+      alarmAction()
     
-    elif(datetime.now()>(cfg.queryTim + timedelta(seconds=cfg.queryInt))):
-      cgm.queryCgmData()
-      cfg.queryTim = datetime.now()
+    #alarm sound/snooze (thresholds not checking during this time)
+    elif cfg.alarmTrigger and not cfg.alarmArmed and cfg.alarmSound:
+      if (datetime.now() < cfg.soundTim):
+        playWack()
+      elif (datetime.now() > cfg.soundTim):
+        snoozeAlarm()
 
-      if not  cfg.bsData:
-        print('error')
-        noDataError()
-      else:
-        #TODO -- errors
-        mat.dispBsArr()
-        mat.printArrow()
+    #alarm snooze mode check/re-trigger
+    elif not cfg.alarmTrigger and cfg.alarmArmed and cfg.alarmSound:
+      if (datetime.now() < cfg.snoozeTim):
+        checkSnoozeAlarm()
+        alarmAction()
+      elif (datetime.now() > cfg.snoozeTim):
+        cfg.alarmArmed = False
+        cfg.alarmSound = False
+        print('snooze time met, re-triggering alarm')
+        alarmAction()
 
-        if not cfg.alarmTrigger and not cfg.alarmArmed:
-          checkAlarm()
-          alarmAction()
-        elif not cfg.alarmTrigger and cfg.alarmArmed:
-          checkPostAlarm()
-          alarmAction()
-  
-        if cfg.alarmTrigger and cfg.alarmSound and (datetime.now() < cfg.soundTim):
-          playWack()
-        if cfg.alarmTrigger and cfg.alarmSound and (datetime.now() > cfg.soundTim):
-          snoozeAlarm()
-  
-        if cfg.alarmArmed and (datetime.now() > cfg.refacTim):
-          print('refactory time met, alarm not armed')
-          cfg.alarmArmed = False
+    #alarm armed/back to normal
+    elif not cfg.alarmTrigger and cfg.alarmArmed and not cfg.alarmSound:
+      if (datetime.now() < cfg.refacTim):
+        checkPostAlarm()
+        alarmAction()
+      elif (datetime.now() > cfg.refacTim):
+        print('refactory time met, alarm not armed, back to normal')
+        cfg.alarmArmed = False
+        cfg.bsHighFl   = False
+        cfg.bsLowFl    = False
+        cfg.bsUrLowFl  = False
+
+#-----------------------------------------------#
+
+def cgmLoop():
+  if(datetime.now()>(cfg.queryTim + timedelta(seconds=cfg.queryInt))):
+    cgm.queryCgmData()
+    cfg.queryTim = datetime.now()
+    print('BS Value: %d'%(cfg.bsValue))
+    print('Trig: %d, Armed: %d, Sound: %d'%(cfg.alarmTrigger, cfg.alarmArmed, cfg.alarmSound))
 #-----------------------------------------------#
 
 def checkAlarm():
-  if cfg.bsValue>cfg.bsHighVal:
+  tmp = 'nan'
+
+  if cfg.bsValue>=cfg.bsHighVal:
     cfg.bsHighFl  = True
     cfg.bsLowFl   = False
     cfg.bsUrLowFl = False
-  elif cfg.bsValue<cfg.bsLowVal and cfg.bsValue>cfg.bsUrLowVal:
+    tmp           = 'High'
+    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsHighTim)
+
+  elif cfg.bsValue<=cfg.bsLowVal and cfg.bsValue>cfg.bsUrLowVal:
     cfg.bsHighFl  = False
     cfg.bsLowFl   = True
     cfg.bsUrLowFl = False
-  elif cfg.bsValue<cfg.bsUrLowVal:
+    tmp           = 'Low'
+    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsLowTim)
+
+  elif cfg.bsValue<=cfg.bsUrLowVal:
     cfg.bsHighFl  = False
     cfg.bsLowFl   = False
     cfg.bsUrLowFl = True
-
-  if cfg.bsHighFl:
-    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsHighTim)
-  elif cfg.bsLowFl:
-    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsLowTim)
-  elif cfg.bsUrLowFl:
+    tmp           = 'Urgent Low'
     cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsUrLowTim)
 
-  if (cfg.bsHighFl or cfg.bsLowFl or cfg.bsUrLowFl) and not cfg.alarmTrigger:
-    print('bs value exceeded')
-    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsUrLowTim)
+
+  if cfg.bsHighFl or cfg.bsLowFl or cfg.bsUrLowFl:
+    print('bs val: %d'%(cfg.bsValue),'crossed threshold:',tmp,', refactory time',cfg.refacTim.strftime("%X"))
     cfg.alarmTrigger = True
     cfg.bsValTrigger = cfg.bsValue
-    resetWackCnt()
 #-----------------------------------------------#
 
 def checkPostAlarm():
-  if cfg.bsValue>cfg.bsHighVal:
-    if cfg.bsValue>(cfg.bsValTrigger+cfg.bsHighThd):
+  if cfg.bsValue>=cfg.bsHighVal:
+    if cfg.bsValue>=(cfg.bsValTrigger+cfg.bsHighThd) or not cfg.bsHighFl:
       cfg.bsHighFl     = True
       cfg.bsLowFl      = False
       cfg.bsUrLowFl    = False
       cfg.alarmTrigger = True
-  elif cfg.bsValue<cfg.bsLowVal and cfg.bsValue>cfg.bsUrLowVal:
-    if cfg.bsValue<(cfg.bsValTrigger-cfg.bsLowThd) and cfg.bsValue>(cfg.bsValTrigger-cfg.bsUrLowThd):
+      cfg.alarmArmed   = False
+      cfg.alarmSound   = False
+      cfg.refacTim     = datetime.now() + timedelta(minutes=cfg.bsHighTim)
+    
+  elif cfg.bsValue<=cfg.bsLowVal and cfg.bsValue>cfg.bsUrLowVal:
+    if cfg.bsUrLowFl:
+      cfg.bsHighFl     = False
+      cfg.bsLowFl      = True
+      cfg.bsUrLowFl    = False
+      cfg.refacTim     = datetime.now() + timedelta(minutes=cfg.bsLowTim)
+      cfg.bsValTrigger = cfg.bsValue
+
+    elif cfg.bsValue<=(cfg.bsValTrigger-cfg.bsLowThd) or not cfg.bsLowFl:
       cfg.bsHighFl     = False
       cfg.bsLowFl      = True
       cfg.bsUrLowFl    = False
       cfg.alarmTrigger = True
-  elif cfg.bsValue<cfg.bsUrLowVal:
-    if cfg.bsValue<(cfg.bsValTrigger-cfg.bsUrLowThd):
+      cfg.alarmArmed   = False
+      cfg.alarmSound   = False
+      cfg.refacTim     = datetime.now() + timedelta(minutes=cfg.bsLowTim)
+
+  elif cfg.bsValue<=cfg.bsUrLowVal:
+    if cfg.bsValue<=(cfg.bsValTrigger-cfg.bsUrLowThd) or not cfg.bsUrLowFl:
       cfg.bsHighFl     = False
       cfg.bsLowFl      = False
       cfg.bsUrLowFl    = True
       cfg.alarmTrigger = True
-#  else:
-#    cfg.bsHighFl  = False
-#    cfg.bsLowFl   = False
-#    cfg.bsUrLowFl = False
+      cfg.alarmArmed   = False
+      cfg.alarmSound   = False
+      cfg.refacTim     = datetime.now() + timedelta(minutes=cfg.bsUrLowTim)
+
+  elif(cfg.bsValue<=cfg.bsInRangeH and cfg.bsValue>=cfg.bsInRangeL):
+      cfg.alarmTrigger = False
+      cfg.alarmArmed   = False
+      cfg.alarmSound   = False
+      cfg.bsHighFl     = False
+      cfg.bsLowFl      = False
+      cfg.bsUrLowFl    = False
+      print('Bs Value of %d is in range, disarming and back to normal'%(cfg.bsValue))
 
   if cfg.alarmTrigger:
-    print('Armed: threshold exceeded')
-    if cfg.bsHighFl:
-      cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsHighTim)
-    elif cfg.bsLowFl:
-      cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsLowTim)
-    elif cfg.bsUrLowFl:
-      cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsUrLowTim)
-
+    print('Armed: new threshold exceeded while armed bs: %d'%(cfg.bsValue))
     cfg.bsValTrigger = cfg.bsValue
-    resetWackCnt()
+#-----------------------------------------------#
+
+def checkSnoozeAlarm():
+  if cfg.bsValue>=cfg.bsHighVal:
+    if cfg.bsValue>=(cfg.bsValTrigger+cfg.bsHighThd):
+      cfg.bsHighFl     = True
+      cfg.bsLowFl      = False
+      cfg.bsUrLowFl    = False
+      cfg.alarmTrigger = True
+      cfg.alarmArmed   = False
+      cfg.alarmSound   = False
+
+  elif cfg.bsValue<=cfg.bsLowVal and cfg.bsValue>cfg.bsUrLowVal:
+    if cfg.bsValue<=(cfg.bsValTrigger-cfg.bsLowThd) and cfg.bsValue>(cfg.bsValTrigger-cfg.bsUrLowThd):
+      cfg.bsHighFl     = False
+      cfg.bsLowFl      = True
+      cfg.bsUrLowFl    = False
+      cfg.alarmTrigger = True
+      cfg.alarmArmed   = False
+      cfg.alarmSound   = False
+
+  elif cfg.bsValue<=cfg.bsUrLowVal:
+    if cfg.bsValue<=(cfg.bsValTrigger-cfg.bsUrLowThd):
+      cfg.bsHighFl     = False
+      cfg.bsLowFl      = False
+      cfg.bsUrLowFl    = True
+      cfg.alarmTrigger = True
+      cfg.alarmArmed   = False
+      cfg.alarmSound   = False
+  
+  if cfg.alarmTrigger:
+    print('Snooze: threshold exceeded while in snooze mode')
+    cfg.bsValTrigger = cfg.bsValue
 #-----------------------------------------------#
 
 def alarmAction():
   #sound alarm
   if cfg.alarmTrigger and not cfg.alarmSound:
     cfg.alarmSound  = True
-    cfg.soundTim  = datetime.now() + timedelta(minutes=cfg.soundKillTim)
+    cfg.soundTim    = datetime.now() + timedelta(minutes=cfg.soundKillTim)
 
     if cfg.bsHighFl:
-      print('high')
+      print('high alarm')
       #TODO -- sound
     elif cfg.bsLowFl:
-      print('low')
+      print('low alarm')
       #TODO -- sound
     elif cfg.bsUrLowFl:
-      print('UrLow')
+      print('UrLow alarm')
       #TODO -- sound
 
     #trun first wack on
+    resetWackCnt()
     cfg.targetWack  = (cfg.targetWack + random.randint(1,2))%3
     cfg.wackPressed = False
     trunWackLed()
@@ -290,30 +357,34 @@ def alarmAction():
 
 def playWack():
   if cfg.wackPressed and (cfg.numWacks != 0):
-    if cfg.wackNumPress == cfg.targetWack and cfg.numWacks != 0:
+    if cfg.wackNumPress == cfg.targetWack:
       cfg.numWacks    = cfg.numWacks-1
       cfg.targetWack  = (cfg.targetWack + random.randint(1,2))%3
       cfg.wackPressed = False
+      print('Correct wack pressed, next %d, remaining %d'%(cfg.targetWack, cfg.numWacks))
       trunWackLed()
-    elif cfg.wackNumPress != cfg.targetWack and cfg.numWacks != 0:
+
+    elif cfg.wackNumPress != cfg.targetWack:
       resetWackCnt()
       turnAllLed(1)
-      time.sleep(1)  
+      time.sleep(1)
       turnAllLed(0)
-      time.sleep(1)  
+      time.sleep(1)
       turnAllLed(1)
-      time.sleep(1)  
+      time.sleep(1)
       turnAllLed(0)
       cfg.targetWack  = (cfg.targetWack + random.randint(1,2))%3
       cfg.wackPressed = False
+      print('Wrong wack pressed, next %d, remaining %d'%(cfg.targetWack, cfg.numWacks))
       trunWackLed()
+
   elif cfg.wackPressed and (cfg.numWacks == 0):
-      cfg.wackPressed  = False
-      turnAllLed(1)
-      time.sleep(1)  
-      turnAllLed(0)
-      print('finished wack play')
-      ackAlarm()
+    cfg.wackPressed  = False
+    turnAllLed(1)
+    time.sleep(1)
+    turnAllLed(0)
+    print('finished wack game')
+    ackAlarm()
 #-----------------------------------------------#
 
 def noDataError():
@@ -332,22 +403,22 @@ def snoozeAlarm():
   cfg.wackPressed  = False
 
   turnAllLed(1)
-  time.sleep(1)  
+  time.sleep(1)
   turnAllLed(0)
 
-  cfg.alarmSound   = False
   cfg.alarmTrigger = False
   cfg.alarmArmed   = True
+  cfg.alarmSound   = True
 
   #TODO -- kill alarm
 
   if cfg.bsHighFl:
-    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsHighTimSz)
+    cfg.snoozeTim  = datetime.now() + timedelta(minutes=cfg.bsHighTimSz)
   elif cfg.bsLowFl:
-    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsLowTimSz)
+    cfg.snoozeTim  = datetime.now() + timedelta(minutes=cfg.bsLowTimSz)
   elif cfg.bsUrLowFl:
-    cfg.refacTim  = datetime.now() + timedelta(minutes=cfg.bsUrLowTimSz)
-  print('alarmed sounded for a while, arming and snoozing until', cfg.refacTim.strftime("%X"))
+    cfg.snoozeTim  = datetime.now() + timedelta(minutes=cfg.bsUrLowTimSz)
+  print('alarmed sounded for a while, arming and snoozing until', cfg.soundTim.strftime("%X"))
 #-----------------------------------------------#
 
 def ackAlarm():
@@ -360,13 +431,13 @@ def ackAlarm():
   #TODO -- kill alarm
 
   if cfg.bsHighFl:
-    tmp = cfg.bsValue+cfg.bsHighThd
+    tmp = cfg.bsValTrigger+cfg.bsHighThd
   elif cfg.bsLowFl:
-    tmp = cfg.bsValue+cfg.bsUrLowThd
+    tmp = cfg.bsValTrigger-cfg.bsUrLowThd
   elif cfg.bsUrLowFl:
-    tmp = cfg.bsValue+cfg.bsLowThd
+    tmp = cfg.bsValTrigger-cfg.bsLowThd
 
-  print('Alarm ack: armed until:', cfg.refacTim.strftime("%X"), ' or bs value of: %d '%(tmp))
+  print('Alarm ack: armed until:', cfg.refacTim.strftime("%X"), 'or bs in range, unless a bs value of: %d '%(tmp))
 #-----------------------------------------------#
 
 def turnAllLed(val):
@@ -422,7 +493,7 @@ def wack3_callback(chan):
 #*******************************#
 def initGlucInterrupts():
   GPIO.add_event_detect(cfg.pinWackBt1, GPIO.FALLING, callback=wack1_callback, bouncetime=70)
-  time.sleep(1)  
+  time.sleep(1)
   GPIO.add_event_detect(cfg.pinWackBt2, GPIO.FALLING, callback=wack2_callback, bouncetime=70)
   time.sleep(1)
   GPIO.add_event_detect(cfg.pinWackBt3, GPIO.FALLING, callback=wack3_callback, bouncetime=70)
@@ -439,9 +510,19 @@ def main():
   while True:
     if cfg.shutDownFlag:
       shutDown()
-    else:
+
+
+    elif cfg.idleFlag:
+      if cfg.switchModes:
+        initIdleMode()
       idleLoop()
-      glucLoop()
+
+
+    elif cfg.glucFlag:
+      if cfg.switchModes:
+        initGlucMode()
+      else:
+        glucLoop()
 #-----------------------------------------------#
 
 def initServ():
@@ -451,8 +532,8 @@ def initServ():
   mat.clear16Mat()
 
   #init state machine flags
-  switchIdleMode()
-  #switchGlucMode()
+  #switchIdleMode()
+  switchGlucMode()
 
   #define interrupt callbacks
   initPwdInterrupts()

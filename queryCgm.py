@@ -87,31 +87,31 @@ def queryCgmData():
 
     if cfg.bsTrend == "DoubleUp":
       cfg.bsDirec = "up"
-      cfg.bsDrop  = 2
+      cfg.bsDrop  = 23
     elif cfg.bsTrend == "SingleUp":
       cfg.bsDirec = "up"
-      cfg.bsDrop  = 1
+      cfg.bsDrop  = 22
     elif cfg.bsTrend == "FortyFiveUp":
       cfg.bsDirec = "+45"
-      cfg.bsDrop  = 0
+      cfg.bsDrop  = 21
     elif cfg.bsTrend == "Flat":
       cfg.bsDirec = "hor"
-      cfg.bsDrop  = 0
+      cfg.bsDrop  = 20
     elif cfg.bsTrend == "FortyFiveDown":
       cfg.bsDirec = "-45"
-      cfg.bsDrop  = 0
+      cfg.bsDrop  = 19
     elif cfg.bsTrend == "SingleDown":
       cfg.bsDirec = "dwn"
-      cfg.bsDrop  = 1
+      cfg.bsDrop  = 18
     elif cfg.bsTrend == "DoubleDown":
       cfg.bsDirec = "dwn"
-      cfg.bsDrop  = 2
+      cfg.bsDrop  = 17
     elif cfg.bsTrend == "nan":
       cfg.bsDirec = "nan"
-      cfg.bsDrop  = 0
+      cfg.bsDrop  = 88
     else:
       cfg.bsDirec = "nan"
-      cfg.bsDrop  = 0
+      cfg.bsDrop  = 99
 
 
     if(testquery):

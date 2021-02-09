@@ -16,7 +16,7 @@ import matrixDisplay as mat
 #--------------------------#
 #         process          #
 #**************************#
-printDebug = False
+printDebug = True
 
 
 #--------------------------#
@@ -152,8 +152,8 @@ queryTim  = datetime.now()
 #no data
 noDataFl    = False
 noDataLatch = False
-noDataInt   = datetime.now()
-noDataTim   = 10  #min. if error for this long, sound
+noDataTim   = datetime.now()
+noDataInt   = 10  #min. if error for this long, sound
 
 #--------------------------#
 #          matrix          #
